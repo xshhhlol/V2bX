@@ -137,18 +137,24 @@ func (n *Hysteria2node) getConn(info *panel.NodeInfo, config *conf.Options) (net
 	if err != nil {
 		return nil, err
 	}
+	var wrapped net.PacketConn
 	switch strings.ToLower(info.Hysteria2.ObfsType) {
 	case "", "plain":
 		return conn, nil
 	case "salamander":
-		ob, err := obfs.NewSalamanderObfuscator([]byte(info.Hysteria2.ObfsPassword))
-		if err != nil {
-			return nil, err
-		}
-		return obfs.WrapPacketConn(conn, ob), nil
+		wrapped, err = obfs.WrapPacketConnSalamander(conn, []byte(info.Hysteria2.ObfsPassword))
+	case "gecko":
+		wrapped, err = obfs.WrapPacketConnGecko(conn, obfs.GeckoOptions{
+			Password: []byte(info.Hysteria2.ObfsPassword),
+		})
 	default:
-		return nil, fmt.Errorf("unsupported obfuscation type")
+		err = fmt.Errorf("unsupported obfuscation type")
 	}
+	if err != nil {
+		conn.Close()
+		return nil, err
+	}
+	return wrapped, nil
 }
 
 func (n *Hysteria2node) getBandwidthConfig(info *panel.NodeInfo) *server.BandwidthConfig {

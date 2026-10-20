@@ -14,6 +14,7 @@ import (
 	"github.com/InazumaV/V2bX/common/counter"
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/log"
+	tun "github.com/sagernet/sing-tun"
 	N "github.com/sagernet/sing/common/network"
 )
 
@@ -121,4 +122,9 @@ func (h *HookServer) RoutedPacketConnection(_ context.Context, conn N.PacketConn
 	}
 	conn = counter.NewPacketConnCounter(conn, t.GetCounter(m.User))
 	return conn
+}
+
+// RoutedFlow tracks L3 flows (TUN, WireGuard and Tailscale forwarding), which V2bX nodes do not use.
+func (h *HookServer) RoutedFlow(_ context.Context, _ adapter.InboundContext, _ adapter.Rule, _ adapter.Outbound) tun.FlowTracker {
+	return nil
 }
