@@ -3,7 +3,6 @@ package sing
 import (
 	"context"
 	"embed"
-	"errors"
 	"io/fs"
 	"net"
 	"net/http"
@@ -14,6 +13,7 @@ import (
 	"time"
 
 	"github.com/InazumaV/V2bX/api/panel"
+	"github.com/InazumaV/V2bX/common/port80"
 	"github.com/InazumaV/V2bX/conf"
 	"github.com/sagernet/sing-box/log"
 )
@@ -28,7 +28,7 @@ type fallbackSites struct {
 	access   sync.Mutex
 	servers  []*http.Server
 	addrs    map[string][2]string
-	redirect *http.Server
+	redirect bool
 }
 
 // applyFallbackSite points trojan and anytls TLS nodes with FallBackSite
@@ -73,8 +73,12 @@ func fallbackOf(addr string) conf.FallBack {
 func (s *fallbackSites) serve(config *conf.FallBackSiteConfig) (string, string, error) {
 	s.access.Lock()
 	defer s.access.Unlock()
-	if config.RedirectHTTP && s.redirect == nil {
-		s.redirect = startRedirect()
+	if config.RedirectHTTP && !s.redirect {
+		if err := port80.EnableRedirect(); err != nil {
+			log.Warn("fallback site: port 80 redirect disabled: ", err)
+		} else {
+			s.redirect = true
+		}
 	}
 	if addrs, ok := s.addrs[config.Root]; ok {
 		return addrs[0], addrs[1], nil
@@ -121,10 +125,10 @@ func (s *fallbackSites) Close() {
 	for _, server := range s.servers {
 		server.Shutdown(ctx)
 	}
-	if s.redirect != nil {
-		s.redirect.Shutdown(ctx)
+	if s.redirect {
+		port80.DisableRedirect()
 	}
-	s.servers, s.addrs, s.redirect = nil, nil, nil
+	s.servers, s.addrs, s.redirect = nil, nil, false
 }
 
 func siteFS(root string) fs.FS {
@@ -162,36 +166,4 @@ func siteHandler(fsys fs.FS) http.Handler {
 		}
 		fileServer.ServeHTTP(w, r)
 	})
-}
-
-func startRedirect() *http.Server {
-	listener, err := net.Listen("tcp", ":80")
-	if err != nil {
-		log.Warn("fallback site: port 80 redirect disabled: ", err)
-		return nil
-	}
-	server := &http.Server{
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			host := r.Host
-			if h, _, err := net.SplitHostPort(host); err == nil {
-				host = h
-			}
-			host = strings.Trim(host, "[]")
-			if host == "" || strings.ContainsAny(host, "/\\@") {
-				http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-				return
-			}
-			if strings.Contains(host, ":") {
-				host = "[" + host + "]"
-			}
-			http.Redirect(w, r, "https://"+host+r.URL.RequestURI(), http.StatusMovedPermanently)
-		}),
-		ReadHeaderTimeout: 30 * time.Second,
-	}
-	go func() {
-		if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Warn("fallback site: port 80 redirect stopped: ", err)
-		}
-	}()
-	return server
 }

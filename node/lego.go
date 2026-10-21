@@ -16,11 +16,11 @@ import (
 	"encoding/json"
 
 	"github.com/go-acme/lego/v4/certificate"
-	"github.com/go-acme/lego/v4/challenge/http01"
 	"github.com/go-acme/lego/v4/providers/dns"
 	"github.com/go-acme/lego/v4/registration"
 
 	"github.com/InazumaV/V2bX/common/file"
+	"github.com/InazumaV/V2bX/common/port80"
 	"github.com/InazumaV/V2bX/conf"
 	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/lego"
@@ -70,7 +70,8 @@ func checkPath(p string) error {
 func (l *Lego) SetProvider() error {
 	switch l.config.CertMode {
 	case "http":
-		err := l.client.Challenge.SetHTTP01Provider(http01.NewProviderServer("", "80"))
+		// Shares port 80 with the fallback site redirect, see common/port80.
+		err := l.client.Challenge.SetHTTP01Provider(port80.Provider{})
 		if err != nil {
 			return err
 		}

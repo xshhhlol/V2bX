@@ -172,6 +172,21 @@ func TestFallbackSiteBehindPrivateReject(t *testing.T) {
 			t.Fatalf("got %q", body)
 		}
 	})
+	t.Run("anytls short garbage is answered at once", func(t *testing.T) {
+		for _, alpn := range [][]string{nil, {"http/1.1"}} {
+			conn, err := dialTLS(context.Background(), anytlsAddr, alpn...)
+			if err != nil {
+				t.Fatal(err)
+			}
+			conn.SetDeadline(time.Now().Add(2 * time.Second))
+			io.WriteString(conn, "hello\r\n")
+			response, err := http.ReadResponse(bufio.NewReader(conn), nil)
+			conn.Close()
+			if err != nil || response.StatusCode != http.StatusBadRequest {
+				t.Fatalf("ALPN %v: response %v, err %v", alpn, response, err)
+			}
+		}
+	})
 	t.Run("trojan http/1.1 probe gets built-in page", func(t *testing.T) {
 		if proto, body := get(t, trojanAddr, "http/1.1"); proto != "HTTP/1.1" || !strings.Contains(body, "<html") {
 			t.Fatalf("got %s %q", proto, body)
