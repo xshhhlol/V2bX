@@ -65,7 +65,7 @@ require (
 	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
 	github.com/anthropics/anthropic-sdk-go v1.26.0 // indirect
-	github.com/anytls/sing-anytls v0.0.11 // indirect
+	github.com/anytls/sing-anytls v0.0.13 // indirect
 	github.com/apernet/quic-go v0.63.1-0.20261004180939-a10df75c260c // indirect
 	github.com/aws/aws-sdk-go-v2 v1.36.6 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.29.18 // indirect
@@ -383,4 +383,4 @@ require (
 
 replace github.com/xtls/xray-core v1.251202.0 => github.com/wyx2685/xray-core v0.0.0-20251202200223-63db1dc9e9e2
 
-replace github.com/sagernet/sing-box => github.com/xshhhlol/sing-box_mod v0.0.0-20261020093400-6e55e173d2c0
+replace github.com/sagernet/sing-box => github.com/xshhhlol/sing-box_mod v0.0.0-20261021005239-acb68873efc2

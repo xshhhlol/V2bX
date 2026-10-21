@@ -181,8 +181,8 @@ github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be/go.mod h1:ySMOLuW
 github.com/anthropics/anthropic-sdk-go v1.26.0 h1:oUTzFaUpAevfuELAP1sjL6CQJ9HHAfT7CoSYSac11PY=
 github.com/anthropics/anthropic-sdk-go v1.26.0/go.mod h1:qUKmaW+uuPB64iy1l+4kOSvaLqPXnHTTBKH6RVZ7q5Q=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
-github.com/anytls/sing-anytls v0.0.11 h1:w8e9Uj1oP3m4zxkyZDewPk0EcQbvVxb7Nn+rapEx4fc=
-github.com/anytls/sing-anytls v0.0.11/go.mod h1:7rjN6IukwysmdusYsrV51Fgu1uW6vsrdd6ctjnEAln8=
+github.com/anytls/sing-anytls v0.0.13 h1:FL+krjOmwpYYLpl5rrV/BrzDMfxbi05YgIQh+NAA37c=
+github.com/anytls/sing-anytls v0.0.13/go.mod h1:7rjN6IukwysmdusYsrV51Fgu1uW6vsrdd6ctjnEAln8=
 github.com/apernet/hysteria/core/v2 v2.13.0 h1:6hWhxnbGAH04VpInXrq/AVoH+kscha4YECx7Tj2yc9Y=
 github.com/apernet/hysteria/core/v2 v2.13.0/go.mod h1:nmxpy/ABkrPG1eNaMzGWUoIlOBjAkb3X2I8H1TGgd1A=
 github.com/apernet/hysteria/extras/v2 v2.13.0 h1:cenZ6WcsvwyNvRAUjqNxjDcyAJH7GeGP8DLuSRFSfyo=
@@ -1266,8 +1266,8 @@ github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f/go.mod h1:N2
 github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415/go.mod h1:GwrjFmJcFw6At/Gs6z4yjiIwzuJ1/+UwLxMQDVQXShQ=
 github.com/xeipuuv/gojsonschema v1.2.0/go.mod h1:anYRn/JVcOK2ZgGU+IjEV4nwlhoK5sQluxsYJ78Id3Y=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
-github.com/xshhhlol/sing-box_mod v0.0.0-20261020093400-6e55e173d2c0 h1:NUAXXG1UvDtg4CFexBF7dH9r2rDuLGqQMkLosweg/GY=
-github.com/xshhhlol/sing-box_mod v0.0.0-20261020093400-6e55e173d2c0/go.mod h1:L0/re6LFG6Y5Ly+iI108FDcWi9FKIFbwB6IqfsapPGs=
+github.com/xshhhlol/sing-box_mod v0.0.0-20261021005239-acb68873efc2 h1:FJNN8ZMi5GCe9IeMMV6o6iwVrydu0Xl2g7Xlq5W3Kd0=
+github.com/xshhhlol/sing-box_mod v0.0.0-20261021005239-acb68873efc2/go.mod h1:AhAfyTAi63Vq/LDBSGUNmxl7r7gUgvZvxlxB90iup24=
 github.com/xtls/reality v0.0.0-20260908045812-e1986a4d31ca h1:eugDuiZ7KGED+IFIBQIUsPJXThy+Wgp3MnroI8S11RE=
 github.com/xtls/reality v0.0.0-20260908045812-e1986a4d31ca/go.mod h1:DsJblcWDGt76+FVqBVwbwRhxyyNJsGV48gJLch0OOWI=
 github.com/yandex-cloud/go-genproto v0.14.0 h1:yDqD260mICkjodXyAaDhESfrLr6gIGwwRc9MYE0jvW0=
