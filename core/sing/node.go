@@ -86,6 +86,11 @@ func getInboundOptions(tag string, info *panel.NodeInfo, c *conf.Options) (optio
 			tls.Enabled = true
 			tls.CertificatePath = c.CertConfig.CertFile
 			tls.KeyPath = c.CertConfig.KeyFile
+			tls.ALPN = append([]string(nil), c.SingOptions.ALPN...)
+			if c.CertConfig.RejectUnknownSni {
+				tls.RejectUnknownSNI = true
+				tls.ServerName = panelServerName(info)
+			}
 		}
 	case panel.Reality:
 		tls.Enabled = true
@@ -318,22 +323,7 @@ func getInboundOptions(tag string, info *panel.NodeInfo, c *conf.Options) (optio
 			Transport: &t,
 			Multiplex: multiplex,
 		}
-		if c.SingOptions.FallBackConfigs != nil {
-			// fallback handling
-			fallback := c.SingOptions.FallBackConfigs.FallBack
-			fallbackPort, err := strconv.Atoi(fallback.ServerPort)
-			if err == nil {
-				trojanoption.Fallback = &option.ServerOptions{
-					Server:     fallback.Server,
-					ServerPort: uint16(fallbackPort),
-				}
-			}
-			fallbackForALPNMap := c.SingOptions.FallBackConfigs.FallBackForALPN
-			fallbackForALPN := make(map[string]*option.ServerOptions, len(fallbackForALPNMap))
-			if err := processFallback(c, fallbackForALPN); err == nil {
-				trojanoption.FallbackForALPN = fallbackForALPN
-			}
-		}
+		trojanoption.Fallback, trojanoption.FallbackForALPN = getFallbackOptions(c)
 		in.Options = trojanoption
 	case "tuic":
 		in.Type = "tuic"
@@ -348,13 +338,28 @@ func getInboundOptions(tag string, info *panel.NodeInfo, c *conf.Options) (optio
 		}
 	case "anytls":
 		in.Type = "anytls"
-		in.Options = &option.AnyTLSInboundOptions{
+		anytlsOption := &option.AnyTLSInboundOptions{
 			ListenOptions: listen,
 			PaddingScheme: info.AnyTls.PaddingScheme,
 			InboundTLSOptionsContainer: option.InboundTLSOptionsContainer{
 				TLS: &tls,
 			},
 		}
+		anytlsOption.Fallback, anytlsOption.FallbackForALPN = getFallbackOptions(c)
+		if anyTLS := c.SingOptions.AnyTLS; anyTLS != nil {
+			anytlsOption.HandshakeTimeout = badoption.Duration(time.Duration(anyTLS.HandshakeTimeout) * time.Second)
+			if shaping := anyTLS.TrafficShaping; shaping != nil && shaping.Enabled {
+				anytlsOption.TrafficShaping = &option.AnyTLSTrafficShapingOptions{
+					Enabled:         true,
+					MinRecordSize:   shaping.MinRecordSize,
+					MaxRecordSize:   shaping.MaxRecordSize,
+					MinRecords:      shaping.MinRecords,
+					MaxRecords:      shaping.MaxRecords,
+					MaxPaddingBytes: shaping.MaxPaddingBytes,
+				}
+			}
+		}
+		in.Options = anytlsOption
 	case "hysteria":
 		in.Type = "hysteria"
 		in.Options = &option.HysteriaInboundOptions{
@@ -396,6 +401,10 @@ func getInboundOptions(tag string, info *panel.NodeInfo, c *conf.Options) (optio
 
 func (b *Sing) AddNode(tag string, info *panel.NodeInfo, config *conf.Options) error {
 	b.nodeReportMinTrafficBytes[tag] = config.ReportMinTraffic * 1024
+	config, err := b.applyFallbackSite(info, config)
+	if err != nil {
+		return fmt.Errorf("start fallback site error: %s", err)
+	}
 	c, err := getInboundOptions(tag, info, config)
 	if err != nil {
 		return err
@@ -423,4 +432,17 @@ func (b *Sing) DelNode(tag string) error {
 		return fmt.Errorf("delete inbound error: %s", err)
 	}
 	return nil
+}
+
+// panelServerName returns the SNI the panel hands out to clients.
+func panelServerName(info *panel.NodeInfo) string {
+	if v := info.VAllss; v != nil {
+		if v.TlsSettings.ServerName != "" {
+			return v.TlsSettings.ServerName
+		}
+		if v.ServerName != "" {
+			return v.ServerName
+		}
+	}
+	return info.Common.ServerName
 }

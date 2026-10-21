@@ -1266,8 +1266,10 @@ github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f/go.mod h1:N2
 github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415/go.mod h1:GwrjFmJcFw6At/Gs6z4yjiIwzuJ1/+UwLxMQDVQXShQ=
 github.com/xeipuuv/gojsonschema v1.2.0/go.mod h1:anYRn/JVcOK2ZgGU+IjEV4nwlhoK5sQluxsYJ78Id3Y=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
-github.com/xshhhlol/sing-box_mod v0.0.0-20261021005239-acb68873efc2 h1:FJNN8ZMi5GCe9IeMMV6o6iwVrydu0Xl2g7Xlq5W3Kd0=
-github.com/xshhhlol/sing-box_mod v0.0.0-20261021005239-acb68873efc2/go.mod h1:AhAfyTAi63Vq/LDBSGUNmxl7r7gUgvZvxlxB90iup24=
+github.com/xshhhlol/sing-anytls v0.0.0-20261021083823-c832b2b00b78 h1:GLa5wChvkIwGZTuVDa6gq6i/QH2lkTx/8UHqv6/J26I=
+github.com/xshhhlol/sing-anytls v0.0.0-20261021083823-c832b2b00b78/go.mod h1:VRKLnj0ObEsN228h+zuzf91p+6sjtYE8SBaLPVsBy5o=
+github.com/xshhhlol/sing-box_mod v0.0.0-20261021083918-446aa2d939f7 h1:WPaVysNvOFsObJJy+Ke9kFaFNPhDxXtVc6pxSeHmbl0=
+github.com/xshhhlol/sing-box_mod v0.0.0-20261021083918-446aa2d939f7/go.mod h1:5ZOH1yUTui1+0G0dE04Rtta3hZgI26tIfL8OKcn6G2o=
 github.com/xtls/reality v0.0.0-20260908045812-e1986a4d31ca h1:eugDuiZ7KGED+IFIBQIUsPJXThy+Wgp3MnroI8S11RE=
 github.com/xtls/reality v0.0.0-20260908045812-e1986a4d31ca/go.mod h1:DsJblcWDGt76+FVqBVwbwRhxyyNJsGV48gJLch0OOWI=
 github.com/yandex-cloud/go-genproto v0.14.0 h1:yDqD260mICkjodXyAaDhESfrLr6gIGwwRc9MYE0jvW0=

@@ -29,6 +29,11 @@ func (h *HookServer) ModeList() []string {
 }
 
 func (h *HookServer) RoutedConnection(_ context.Context, conn net.Conn, m adapter.InboundContext, _ adapter.Rule, _ adapter.Outbound) net.Conn {
+	// Fallback connections carry no user and go to the configured site,
+	// so they bypass user limits and traffic accounting.
+	if m.Fallback {
+		return conn
+	}
 	l, err := limiter.GetLimiter(m.Inbound)
 	if err != nil {
 		log.Warn("get limiter for ", m.Inbound, " error: ", err)

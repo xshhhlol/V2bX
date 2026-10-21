@@ -43,6 +43,41 @@
           "EnvName": "env1"
         }
       }
+    },
+    {
+      "Core": "sing",
+      "ApiHost": "http://127.0.0.1",
+      "ApiKey": "test",
+      "NodeID": 34,
+      "NodeType": "anytls",
+      "Timeout": 30,
+      "ListenIP": "::",
+      "SendIP": "0.0.0.0",
+      "DeviceOnlineMinTraffic": 200,
+      "MinReportTraffic": 0,
+      "TCPFastOpen": false,
+      "SniffEnabled": true,
+      "FallBackSite": {
+        "Enable": true,
+        "Root": "/etc/V2bX/www",
+        "RedirectHTTP": true
+      },
+      "AnyTLSConfig": {
+        "TrafficShaping": {
+          "Enable": true
+        }
+      },
+      "CertConfig": {
+        "CertMode": "dns",
+        "RejectUnknownSni": true,
+        "CertDomain": "node.example.com",
+        "CertFile": "/etc/V2bX/fullchain.cer",
+        "KeyFile": "/etc/V2bX/cert.key",
+        "Provider": "cloudflare",
+        "DNSEnv": {
+          "CF_DNS_API_TOKEN": "token"
+        }
+      }
     }
   ]
 }

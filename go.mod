@@ -11,6 +11,7 @@ require (
 	github.com/go-resty/resty/v2 v2.16.5
 	github.com/juju/ratelimit v1.0.2
 	github.com/sagernet/sing v0.9.7-0.20260929150544-0ad23b637bd4
+	github.com/sagernet/sing-anytls v0.0.0-00010101000000-000000000000
 	github.com/sagernet/sing-box v1.13.0
 	github.com/sagernet/sing-tun v0.9.7-0.20261009020158-bca4bf029237
 	github.com/sirupsen/logrus v1.9.3
@@ -383,4 +384,6 @@ require (
 
 replace github.com/xtls/xray-core v1.251202.0 => github.com/wyx2685/xray-core v0.0.0-20251202200223-63db1dc9e9e2
 
-replace github.com/sagernet/sing-box => github.com/xshhhlol/sing-box_mod v0.0.0-20261021005239-acb68873efc2
+replace github.com/sagernet/sing-box => github.com/xshhhlol/sing-box_mod v0.0.0-20261021083918-446aa2d939f7
+
+replace github.com/sagernet/sing-anytls => github.com/xshhhlol/sing-anytls v0.0.0-20261021083823-c832b2b00b78

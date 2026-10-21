@@ -32,6 +32,7 @@ type Sing struct {
 	logFactory                log.Factory
 	users                     *UserMap
 	nodeReportMinTrafficBytes map[string]int64
+	sites                     fallbackSites
 }
 
 type UserMap struct {
@@ -101,6 +102,7 @@ func (b *Sing) Start() error {
 }
 
 func (b *Sing) Close() error {
+	b.sites.Close()
 	return b.box.Close()
 }
 

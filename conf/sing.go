@@ -38,7 +38,10 @@ type SingOptions struct {
 	EnableDNS                bool                   `json:"EnableDNS"`
 	DomainStrategy           option.DomainStrategy  `json:"DomainStrategy"`
 	FallBackConfigs          *FallBackConfigForSing `json:"FallBackConfigs"`
+	FallBackSite             *FallBackSiteConfig    `json:"FallBackSite"`
+	ALPN                     []string               `json:"ALPN"`
 	Multiplex                *MultiplexConfig       `json:"MultiplexConfig"`
+	AnyTLS                   *AnyTLSConfig          `json:"AnyTLSConfig"`
 }
 
 type SingNtpConfig struct {
@@ -58,6 +61,18 @@ type FallBack struct {
 	ServerPort string `json:"ServerPort"`
 }
 
+// FallBackSiteConfig serves a built-in website to unauthenticated connections
+// of trojan and anytls TLS nodes, so no separate web server is needed. It is
+// ignored when FallBackConfigs names a fallback.
+type FallBackSiteConfig struct {
+	Enabled bool `json:"Enable"`
+	// Root is a directory of static files; empty or missing uses a built-in page.
+	Root string `json:"Root"`
+	// RedirectHTTP redirects port 80 to https. Port 80 must stay free for
+	// CertMode "http", so do not enable both.
+	RedirectHTTP bool `json:"RedirectHTTP"`
+}
+
 type MultiplexConfig struct {
 	Enabled bool          `json:"Enable"`
 	Padding bool          `json:"Padding"`
@@ -68,6 +83,23 @@ type BrutalOptions struct {
 	Enabled  bool `json:"Enable"`
 	UpMbps   int  `json:"UpMbps"`
 	DownMbps int  `json:"DownMbps"`
+}
+
+type AnyTLSConfig struct {
+	TrafficShaping *AnyTLSTrafficShapingConfig `json:"TrafficShaping"`
+	// HandshakeTimeout is in seconds; 0 uses the protocol library default.
+	HandshakeTimeout int `json:"HandshakeTimeout"`
+}
+
+// AnyTLSTrafficShapingConfig is server-side only. Zero sizes and counts use
+// the protocol library defaults; disabling it restores the legacy sender.
+type AnyTLSTrafficShapingConfig struct {
+	Enabled         bool `json:"Enable"`
+	MinRecordSize   int  `json:"MinRecordSize"`
+	MaxRecordSize   int  `json:"MaxRecordSize"`
+	MinRecords      int  `json:"MinRecords"`
+	MaxRecords      int  `json:"MaxRecords"`
+	MaxPaddingBytes int  `json:"MaxPaddingBytes"`
 }
 
 func NewSingOptions() *SingOptions {
