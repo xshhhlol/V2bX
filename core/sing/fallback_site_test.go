@@ -203,3 +203,39 @@ func TestFallbackSiteBehindPrivateReject(t *testing.T) {
 		}
 	})
 }
+
+// A short malformed request must get an immediate 400 like a normal web
+// server, not hang while the server waits for an HTTP/2 preface.
+func TestFallbackSiteShortGarbage(t *testing.T) {
+	var sites fallbackSites
+	defer sites.Close()
+	h1, h2, err := sites.serve(&conf.FallBackSiteConfig{Enabled: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	conn, err := net.Dial("tcp", h1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	conn.SetDeadline(time.Now().Add(3 * time.Second))
+	io.WriteString(conn, "hello\r\n")
+	response, err := http.ReadResponse(bufio.NewReader(conn), nil)
+	if err != nil {
+		t.Fatalf("no response to short garbage: %v", err)
+	}
+	if response.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status %d", response.StatusCode)
+	}
+
+	client := &http.Client{Timeout: 3 * time.Second, Transport: &http.Transport{Protocols: new(http.Protocols)}}
+	client.Transport.(*http.Transport).Protocols.SetUnencryptedHTTP2(true)
+	response, err = client.Get("http://" + h2 + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if response.ProtoMajor != 2 || response.StatusCode != http.StatusOK {
+		t.Fatalf("h2 listener: %s %d", response.Proto, response.StatusCode)
+	}
+}

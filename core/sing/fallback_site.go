@@ -21,12 +21,13 @@ import (
 //go:embed site
 var defaultSite embed.FS
 
-// fallbackSites runs the built-in fallback websites, one loopback server per
-// site root shared by all nodes, plus the optional port 80 redirect.
+// fallbackSites runs the built-in fallback websites, shared by all nodes:
+// per site root one loopback HTTP/1.1 server and one h2c server, plus the
+// optional port 80 redirect.
 type fallbackSites struct {
 	access   sync.Mutex
-	servers  map[string]*http.Server
-	addrs    map[string]string
+	servers  []*http.Server
+	addrs    map[string][2]string
 	redirect *http.Server
 }
 
@@ -43,17 +44,15 @@ func (b *Sing) applyFallbackSite(info *panel.NodeInfo, config *conf.Options) (*c
 	if fb := options.FallBackConfigs; fb != nil && (fb.FallBack.ServerPort != "" || len(fb.FallBackForALPN) > 0) {
 		return config, nil
 	}
-	addr, err := b.sites.serve(options.FallBackSite)
+	h1Addr, h2Addr, err := b.sites.serve(options.FallBackSite)
 	if err != nil {
 		return nil, err
 	}
-	host, port, _ := net.SplitHostPort(addr)
-	site := conf.FallBack{Server: host, ServerPort: port}
+	h1, h2 := fallbackOf(h1Addr), fallbackOf(h2Addr)
 	newOptions := *options
-	// One listener speaks both HTTP/1.1 and prior-knowledge HTTP/2.
 	newOptions.FallBackConfigs = &conf.FallBackConfigForSing{
-		FallBack:        site,
-		FallBackForALPN: map[string]conf.FallBack{"http/1.1": site, "h2": site},
+		FallBack:        h1,
+		FallBackForALPN: map[string]conf.FallBack{"http/1.1": h1, "h2": h2},
 	}
 	if len(newOptions.ALPN) == 0 {
 		newOptions.ALPN = []string{"h2", "http/1.1"}
@@ -63,36 +62,55 @@ func (b *Sing) applyFallbackSite(info *panel.NodeInfo, config *conf.Options) (*c
 	return &newConfig, nil
 }
 
-func (s *fallbackSites) serve(config *conf.FallBackSiteConfig) (string, error) {
+func fallbackOf(addr string) conf.FallBack {
+	host, port, _ := net.SplitHostPort(addr)
+	return conf.FallBack{Server: host, ServerPort: port}
+}
+
+// serve returns the HTTP/1.1 and h2c addresses of the site. They are separate
+// listeners: a server accepting both must read 24 bytes to look for the
+// HTTP/2 preface, and would hang on a shorter request instead of answering 400.
+func (s *fallbackSites) serve(config *conf.FallBackSiteConfig) (string, string, error) {
 	s.access.Lock()
 	defer s.access.Unlock()
 	if config.RedirectHTTP && s.redirect == nil {
 		s.redirect = startRedirect()
 	}
-	if addr, ok := s.addrs[config.Root]; ok {
-		return addr, nil
+	if addrs, ok := s.addrs[config.Root]; ok {
+		return addrs[0], addrs[1], nil
 	}
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return "", err
+	handler := siteHandler(siteFS(config.Root))
+	var addrs [2]string
+	var servers []*http.Server
+	for i := range addrs {
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			for _, server := range servers {
+				server.Close()
+			}
+			return "", "", err
+		}
+		server := &http.Server{
+			Handler:           handler,
+			Protocols:         new(http.Protocols),
+			ReadHeaderTimeout: 30 * time.Second,
+			IdleTimeout:       2 * time.Minute,
+		}
+		if i == 0 {
+			server.Protocols.SetHTTP1(true)
+		} else {
+			server.Protocols.SetUnencryptedHTTP2(true)
+		}
+		go server.Serve(listener)
+		servers = append(servers, server)
+		addrs[i] = listener.Addr().String()
 	}
-	server := &http.Server{
-		Handler:           siteHandler(siteFS(config.Root)),
-		Protocols:         new(http.Protocols),
-		ReadHeaderTimeout: 30 * time.Second,
-		IdleTimeout:       2 * time.Minute,
+	if s.addrs == nil {
+		s.addrs = make(map[string][2]string)
 	}
-	server.Protocols.SetHTTP1(true)
-	server.Protocols.SetUnencryptedHTTP2(true)
-	go server.Serve(listener)
-	if s.servers == nil {
-		s.servers = make(map[string]*http.Server)
-		s.addrs = make(map[string]string)
-	}
-	addr := listener.Addr().String()
-	s.servers[config.Root] = server
-	s.addrs[config.Root] = addr
-	return addr, nil
+	s.servers = append(s.servers, servers...)
+	s.addrs[config.Root] = addrs
+	return addrs[0], addrs[1], nil
 }
 
 func (s *fallbackSites) Close() {
