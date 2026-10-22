@@ -192,6 +192,26 @@ func TestFallbackSiteBehindPrivateReject(t *testing.T) {
 			t.Fatalf("got %s %q", proto, body)
 		}
 	})
+	t.Run("trojan h2 probe gets built-in page", func(t *testing.T) {
+		if proto, body := get(t, trojanAddr, "h2", "http/1.1"); proto != "HTTP/2.0" || !strings.Contains(body, "<html") {
+			t.Fatalf("got %s %q", proto, body)
+		}
+	})
+	t.Run("trojan short garbage is answered at once", func(t *testing.T) {
+		for _, alpn := range [][]string{nil, {"http/1.1"}} {
+			conn, err := dialTLS(context.Background(), trojanAddr, alpn...)
+			if err != nil {
+				t.Fatal(err)
+			}
+			conn.SetDeadline(time.Now().Add(2 * time.Second))
+			io.WriteString(conn, "hello\r\n")
+			response, err := http.ReadResponse(bufio.NewReader(conn), nil)
+			conn.Close()
+			if err != nil || response.StatusCode != http.StatusBadRequest {
+				t.Fatalf("ALPN %v: response %v, err %v", alpn, response, err)
+			}
+		}
+	})
 	t.Run("users still cannot reach private addresses", func(t *testing.T) {
 		client, err := anytls.NewClient(anytls.ClientOptions{
 			Password: user.Uuid,
