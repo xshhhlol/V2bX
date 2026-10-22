@@ -254,3 +254,85 @@ func TestFallbackSiteShortGarbage(t *testing.T) {
 		t.Fatalf("h2 listener: %s %d", response.Proto, response.StatusCode)
 	}
 }
+
+// Exercise the real HTTP servers: HEAD body suppression and conditional
+// requests must work the same way on HTTP/1.1 and HTTP/2.
+func TestFallbackSiteHTTPBehavior(t *testing.T) {
+	var sites fallbackSites
+	defer sites.Close()
+	h1, h2, err := sites.serve(&conf.FallBackSiteConfig{Enabled: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, addr := range []string{h1, h2} {
+		t.Run(fmt.Sprintf("http%d", i+1), func(t *testing.T) {
+			protocols := new(http.Protocols)
+			protocols.SetHTTP1(i == 0)
+			protocols.SetUnencryptedHTTP2(i == 1)
+			transport := &http.Transport{Protocols: protocols}
+			defer transport.CloseIdleConnections()
+			client := &http.Client{Transport: transport, Timeout: 3 * time.Second}
+			request := func(method, path string, headers map[string]string) (*http.Response, string) {
+				t.Helper()
+				req, err := http.NewRequest(method, "http://"+addr+path, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				for key, value := range headers {
+					req.Header.Set(key, value)
+				}
+				response, err := client.Do(req)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer response.Body.Close()
+				body, err := io.ReadAll(response.Body)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if response.ProtoMajor != i+1 {
+					t.Fatalf("unexpected protocol: %s", response.Proto)
+				}
+				return response, string(body)
+			}
+			for _, path := range []string{"/", "/about/", "/style.css"} {
+				response, body := request("GET", path, nil)
+				etag := response.Header.Get("ETag")
+				if response.StatusCode != 200 || etag == "" || body == "" {
+					t.Fatalf("GET %s: %d, ETag %q", path, response.StatusCode, etag)
+				}
+				head, headBody := request("HEAD", path, nil)
+				if head.StatusCode != 200 || headBody != "" || head.ContentLength != int64(len(body)) || head.Header.Get("ETag") != etag {
+					t.Fatalf("HEAD %s inconsistent with GET", path)
+				}
+				cached, cachedBody := request("GET", path, map[string]string{"If-None-Match": etag})
+				if cached.StatusCode != 304 || cachedBody != "" {
+					t.Fatalf("conditional GET %s: %d %q", path, cached.StatusCode, cachedBody)
+				}
+				fresh, _ := request("GET", path, map[string]string{"If-None-Match": `"stale"`})
+				if fresh.StatusCode != 200 {
+					t.Fatalf("stale validator: %d", fresh.StatusCode)
+				}
+				partial, part := request("GET", path, map[string]string{"Range": "bytes=0-9", "If-Range": etag})
+				if partial.StatusCode != 206 || part != body[:10] {
+					t.Fatalf("range %s: %d %q", path, partial.StatusCode, part)
+				}
+			}
+			for _, tc := range []struct {
+				method, path string
+				code         int
+			}{
+				{"GET", "/missing", 404}, {"HEAD", "/missing", 404},
+				{"GET", "/.git/config", 404}, {"POST", "/", 405},
+			} {
+				response, body := request(tc.method, tc.path, nil)
+				if response.StatusCode != tc.code || tc.method == "HEAD" && body != "" {
+					t.Fatalf("%s %s: %d %q", tc.method, tc.path, response.StatusCode, body)
+				}
+				if tc.code == 405 && response.Header.Get("Allow") != "GET, HEAD" {
+					t.Fatal("missing Allow header")
+				}
+			}
+		})
+	}
+}

@@ -64,6 +64,21 @@ GOEXPERIMENT=jsonv2 go build -v -o build_assets/V2bX -tags "sing xray hysteria2 
 
 [详细使用教程](https://v2bx.v-50.me/)
 
+### sing 内核的 TLS 回落网站
+
+Trojan / AnyTLS 节点可在节点配置中启用内置静态网站：
+
+```json
+"FallBackSite": {
+  "Enable": true,
+  "Root": "/etc/V2bX/www"
+}
+```
+
+将自己的 `index.html`、样式和其他页面放到该目录。目录为空或不存在时使用内置 Notes 示例网站，包含首页、关于页和样式文件；建议部署时替换为自己的内容。已指定 `FallBackConfigs` 时优先使用外部回落。
+
+网站支持 HTTP/1.1 和 HTTP/2、GET/HEAD、范围请求及条件缓存。内置资源使用内容 ETag，自定义文件使用 Last-Modified；缺失页面返回 404，不支持的方法返回 405，隐藏文件和没有首页的目录不提供列表。不会为了改变响应大小而随机追加内容。回落仅处理未认证连接，不改变正常代理业务的内容。
+
 ## 免责声明
 
 * 此项目用于本人自用，因此本人不能保证向后兼容性。

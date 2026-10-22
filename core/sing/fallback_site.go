@@ -2,7 +2,10 @@ package sing
 
 import (
 	"context"
+	"crypto/sha256"
 	"embed"
+	"fmt"
+	"io"
 	"io/fs"
 	"net"
 	"net/http"
@@ -157,12 +160,28 @@ func siteHandler(fsys fs.FS) http.Handler {
 			name = "."
 		}
 		stat, err := fs.Stat(fsys, name)
+		contentName := name
 		if err == nil && stat.IsDir() {
-			_, err = fs.Stat(fsys, path.Join(name, "index.html"))
+			contentName = path.Join(name, "index.html")
+			stat, err = fs.Stat(fsys, contentName)
 		}
 		if err != nil || strings.Contains("/"+name, "/.") && name != "." {
 			http.NotFound(w, r)
 			return
+		}
+		// Embedded files have no modification time, so FileServer cannot supply
+		// Last-Modified. Give those files a content validator and let net/http
+		// handle conditional and range requests. Disk files retain their normal
+		// modification-time validation, including live edits to a custom root.
+		if stat.Mode().IsRegular() && stat.ModTime().IsZero() {
+			if file, openErr := fsys.Open(contentName); openErr == nil {
+				hash := sha256.New()
+				_, hashErr := io.Copy(hash, file)
+				file.Close()
+				if hashErr == nil {
+					w.Header().Set("ETag", fmt.Sprintf(`"%x"`, hash.Sum(nil)))
+				}
+			}
 		}
 		fileServer.ServeHTTP(w, r)
 	})
