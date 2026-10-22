@@ -1270,6 +1270,8 @@ github.com/xshhhlol/sing-anytls v0.0.0-20261021111646-31121aa21c4e h1:tnJuzcgvOE
 github.com/xshhhlol/sing-anytls v0.0.0-20261021111646-31121aa21c4e/go.mod h1:VRKLnj0ObEsN228h+zuzf91p+6sjtYE8SBaLPVsBy5o=
 github.com/xshhhlol/sing-box_mod v0.0.0-20261022051535-1ecec304db25 h1:Nf6hE7DlThCZT2c55O6NRgiJ/BRmI7mXJaqegj95qTc=
 github.com/xshhhlol/sing-box_mod v0.0.0-20261022051535-1ecec304db25/go.mod h1:Vhim68GEvZ7EWZxo159UC8FBsYdFyK0160yEecHIxuw=
+github.com/xshhhlol/sing-box_mod v0.0.0-20261022062220-7eae3c6fdd64 h1:gi58fd9xyW1XAEJ56eV8BMh0L+jJJnuGlgKrFEQjl5I=
+github.com/xshhhlol/sing-box_mod v0.0.0-20261022062220-7eae3c6fdd64/go.mod h1:Vhim68GEvZ7EWZxo159UC8FBsYdFyK0160yEecHIxuw=
 github.com/xtls/reality v0.0.0-20260908045812-e1986a4d31ca h1:eugDuiZ7KGED+IFIBQIUsPJXThy+Wgp3MnroI8S11RE=
 github.com/xtls/reality v0.0.0-20260908045812-e1986a4d31ca/go.mod h1:DsJblcWDGt76+FVqBVwbwRhxyyNJsGV48gJLch0OOWI=
 github.com/yandex-cloud/go-genproto v0.14.0 h1:yDqD260mICkjodXyAaDhESfrLr6gIGwwRc9MYE0jvW0=
