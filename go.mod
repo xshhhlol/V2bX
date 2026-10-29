@@ -14,6 +14,7 @@ require (
 	github.com/sagernet/sing-anytls v0.0.0-00010101000000-000000000000
 	github.com/sagernet/sing-box v1.13.0
 	github.com/sagernet/sing-tun v0.9.7-0.20261009020158-bca4bf029237
+	github.com/sagernet/sing-vmess v0.2.9-0.20260929152519-9b95ab8c9478
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.19.0
@@ -289,7 +290,6 @@ require (
 	github.com/sagernet/sing-shadowtls v0.2.2-0.20260928201441-a9c0127d5c99 // indirect
 	github.com/sagernet/sing-snell v0.0.0-20260904135315-bc5a12ac736f // indirect
 	github.com/sagernet/sing-usbip v0.0.0-20260817040617-28bd42667eca // indirect
-	github.com/sagernet/sing-vmess v0.2.9-0.20260929152519-9b95ab8c9478 // indirect
 	github.com/sagernet/smux v1.5.50-sing-box-mod.1 // indirect
 	github.com/sagernet/tailscale v1.102.1-sing-box-1.14-mod.5 // indirect
 	github.com/sagernet/wireguard-go v0.0.8-0.20260929150556-6731c7387c81 // indirect
@@ -384,8 +384,8 @@ require (
 
 replace github.com/xtls/xray-core v1.251202.0 => github.com/wyx2685/xray-core v0.0.0-20251202200223-63db1dc9e9e2
 
-replace github.com/sagernet/sing-box => github.com/xshhhlol/sing-box_mod v0.0.0-20261022062220-7eae3c6fdd64
+replace github.com/sagernet/sing-box => github.com/xshhhlol/sing-box_mod v0.0.0-20261029090840-d8dd41b55d05
 
 replace github.com/sagernet/sing-anytls => github.com/xshhhlol/sing-anytls v0.0.0-20261021111646-31121aa21c4e
 
-replace github.com/sagernet/sing-vmess => github.com/xshhhlol/sing-vmess v0.0.0-20261029082549-dde2d54bccb7
+replace github.com/sagernet/sing-vmess => github.com/xshhhlol/sing-vmess v0.0.0-20261029090832-b7d57b1a7f7b

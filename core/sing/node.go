@@ -223,7 +223,7 @@ func getInboundOptions(tag string, info *panel.NodeInfo, c *conf.Options) (optio
 			}
 		} else {
 			in.Type = "vmess"
-			in.Options = &option.VMessInboundOptions{
+			vmessOption := &option.VMessInboundOptions{
 				ListenOptions: listen,
 				InboundTLSOptionsContainer: option.InboundTLSOptionsContainer{
 					TLS: &tls,
@@ -231,6 +231,27 @@ func getInboundOptions(tag string, info *panel.NodeInfo, c *conf.Options) (optio
 				Transport: &t,
 				Multiplex: multiplex,
 			}
+			// With a transport, probes are answered by its HTTP layer.
+			if t.Type == "" {
+				vmessOption.Fallback, vmessOption.FallbackForALPN = getFallbackOptions(c)
+				if !tls.Enabled {
+					vmessOption.FallbackForALPN = nil
+				}
+			}
+			if vmessConfig := c.SingOptions.VMess; vmessConfig != nil {
+				vmessOption.HandshakeTimeout = badoption.Duration(time.Duration(vmessConfig.HandshakeTimeout) * time.Second)
+				vmessOption.RequireEncryption = vmessConfig.RequireEncryption && !tls.Enabled
+				if shaping := vmessConfig.TrafficShaping; shaping != nil && shaping.Enabled {
+					vmessOption.ResponseShaping = &option.VMessResponseShapingOptions{
+						Enabled:       true,
+						MinRecordSize: shaping.MinRecordSize,
+						MaxRecordSize: shaping.MaxRecordSize,
+						MinRecords:    shaping.MinRecords,
+						MaxRecords:    shaping.MaxRecords,
+					}
+				}
+			}
+			in.Options = vmessOption
 		}
 	case "shadowsocks":
 		in.Type = "shadowsocks"

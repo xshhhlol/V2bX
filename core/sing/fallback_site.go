@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"embed"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -34,20 +35,28 @@ type fallbackSites struct {
 	redirect bool
 }
 
-// applyFallbackSite points trojan and anytls TLS nodes with FallBackSite
-// enabled at the built-in site. The returned options are a copy.
+// applyFallbackSite points trojan and anytls TLS nodes, and VMess nodes
+// without transport, with FallBackSite enabled at the built-in site. The
+// returned options are a copy.
 func (b *Sing) applyFallbackSite(info *panel.NodeInfo, config *conf.Options) (*conf.Options, error) {
 	options := config.SingOptions
 	if options == nil || options.FallBackSite == nil || !options.FallBackSite.Enabled {
 		return config, nil
 	}
-	if info.Type != "trojan" && info.Type != "anytls" || info.Security != panel.Tls {
+	if !fallbackSiteApplies(info) {
 		return config, nil
 	}
 	if fb := options.FallBackConfigs; fb != nil && (fb.FallBack.ServerPort != "" || len(fb.FallBackForALPN) > 0) {
 		return config, nil
 	}
-	h1Addr, h2Addr, err := b.sites.serve(options.FallBackSite)
+	site := options.FallBackSite
+	if info.Security != panel.Tls && site.RedirectHTTP {
+		// Port 80 redirects to https, which a node without TLS cannot serve.
+		withoutRedirect := *site
+		withoutRedirect.RedirectHTTP = false
+		site = &withoutRedirect
+	}
+	h1Addr, h2Addr, err := b.sites.serve(site)
 	if err != nil {
 		return nil, err
 	}
@@ -63,6 +72,32 @@ func (b *Sing) applyFallbackSite(info *panel.NodeInfo, config *conf.Options) (*c
 	newConfig := *config
 	newConfig.SingOptions = &newOptions
 	return &newConfig, nil
+}
+
+func fallbackSiteApplies(info *panel.NodeInfo) bool {
+	switch info.Type {
+	case "trojan", "anytls":
+		return info.Security == panel.Tls
+	case "vmess":
+		return info.Security != panel.Reality && vmessWithoutTransport(info.VAllss)
+	}
+	return false
+}
+
+// vmessWithoutTransport mirrors getInboundOptions: tcp without an http
+// header has no transport, so VMess itself sees every probe.
+func vmessWithoutTransport(n *panel.VAllssNode) bool {
+	if n == nil || n.Network != "tcp" {
+		return false
+	}
+	if len(n.NetworkSettings) == 0 {
+		return true
+	}
+	var network HttpNetworkConfig
+	if err := json.Unmarshal(n.NetworkSettings, &network); err != nil {
+		return false
+	}
+	return network.Header.Type != "http"
 }
 
 func fallbackOf(addr string) conf.FallBack {

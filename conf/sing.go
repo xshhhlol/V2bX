@@ -42,6 +42,7 @@ type SingOptions struct {
 	ALPN                     []string               `json:"ALPN"`
 	Multiplex                *MultiplexConfig       `json:"MultiplexConfig"`
 	AnyTLS                   *AnyTLSConfig          `json:"AnyTLSConfig"`
+	VMess                    *VMessConfig           `json:"VMessConfig"`
 }
 
 type SingNtpConfig struct {
@@ -62,8 +63,9 @@ type FallBack struct {
 }
 
 // FallBackSiteConfig serves a built-in website to unauthenticated connections
-// of trojan and anytls TLS nodes, so no separate web server is needed. It is
-// ignored when FallBackConfigs names a fallback.
+// of trojan and anytls TLS nodes and of VMess nodes without transport (with
+// or without TLS), so no separate web server is needed. It is ignored when
+// FallBackConfigs names a fallback.
 type FallBackSiteConfig struct {
 	Enabled bool `json:"Enable"`
 	// Root is a directory of static files; empty or missing uses a built-in page.
@@ -100,6 +102,29 @@ type AnyTLSTrafficShapingConfig struct {
 	MinRecords      int  `json:"MinRecords"`
 	MaxRecords      int  `json:"MaxRecords"`
 	MaxPaddingBytes int  `json:"MaxPaddingBytes"`
+}
+
+// VMessConfig hardens VMess nodes; existing clients need no changes.
+// Requests that fail authentication always go to FallBackSite when it is
+// enabled on a node without transport, or are otherwise held until
+// HandshakeTimeout instead of being closed at once.
+type VMessConfig struct {
+	// RequireEncryption rejects clients choosing "none" or "aes-128-cfb".
+	// It applies only to nodes without TLS, where those send plaintext.
+	RequireEncryption bool                       `json:"RequireEncryption"`
+	TrafficShaping    *VMessTrafficShapingConfig `json:"TrafficShaping"`
+	// HandshakeTimeout is in seconds; 0 uses the protocol library default.
+	HandshakeTimeout int `json:"HandshakeTimeout"`
+}
+
+// VMessTrafficShapingConfig splits the first downlink records of each
+// connection into random sizes. Zero values use the library defaults.
+type VMessTrafficShapingConfig struct {
+	Enabled       bool `json:"Enable"`
+	MinRecordSize int  `json:"MinRecordSize"`
+	MaxRecordSize int  `json:"MaxRecordSize"`
+	MinRecords    int  `json:"MinRecords"`
+	MaxRecords    int  `json:"MaxRecords"`
 }
 
 func NewSingOptions() *SingOptions {

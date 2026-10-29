@@ -1266,10 +1266,10 @@ github.com/xeipuuv/gojsonschema v1.2.0/go.mod h1:anYRn/JVcOK2ZgGU+IjEV4nwlhoK5sQ
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
 github.com/xshhhlol/sing-anytls v0.0.0-20261021111646-31121aa21c4e h1:tnJuzcgvOEsue4eFNTVRST0jnWvPo00WiTo/E/d6cVI=
 github.com/xshhhlol/sing-anytls v0.0.0-20261021111646-31121aa21c4e/go.mod h1:VRKLnj0ObEsN228h+zuzf91p+6sjtYE8SBaLPVsBy5o=
-github.com/xshhhlol/sing-box_mod v0.0.0-20261022062220-7eae3c6fdd64 h1:gi58fd9xyW1XAEJ56eV8BMh0L+jJJnuGlgKrFEQjl5I=
-github.com/xshhhlol/sing-box_mod v0.0.0-20261022062220-7eae3c6fdd64/go.mod h1:Vhim68GEvZ7EWZxo159UC8FBsYdFyK0160yEecHIxuw=
-github.com/xshhhlol/sing-vmess v0.0.0-20261029082549-dde2d54bccb7 h1:gS1/f1iT4GlB8gIZT5vReLsbr2r+7RnKs+xog7qmzYo=
-github.com/xshhhlol/sing-vmess v0.0.0-20261029082549-dde2d54bccb7/go.mod h1:P11scgTxMxVVQ8dlM27yNm3Cro40mD0+gHbnqrNGDuY=
+github.com/xshhhlol/sing-box_mod v0.0.0-20261029090840-d8dd41b55d05 h1:5AkDVGChJPvTIkZjMdHJXhXS+AmAIo1ldBWQhteakiw=
+github.com/xshhhlol/sing-box_mod v0.0.0-20261029090840-d8dd41b55d05/go.mod h1:rp6FM0a8B0rzV2FuItBstfEm8W5jqhGsDTC39kYTs+g=
+github.com/xshhhlol/sing-vmess v0.0.0-20261029090832-b7d57b1a7f7b h1:Dis2pm5vh4z9/nklbbPb0reg0i26cbbVdMULnDpx1H8=
+github.com/xshhhlol/sing-vmess v0.0.0-20261029090832-b7d57b1a7f7b/go.mod h1:P11scgTxMxVVQ8dlM27yNm3Cro40mD0+gHbnqrNGDuY=
 github.com/xtls/reality v0.0.0-20260908045812-e1986a4d31ca h1:eugDuiZ7KGED+IFIBQIUsPJXThy+Wgp3MnroI8S11RE=
 github.com/xtls/reality v0.0.0-20260908045812-e1986a4d31ca/go.mod h1:DsJblcWDGt76+FVqBVwbwRhxyyNJsGV48gJLch0OOWI=
 github.com/yandex-cloud/go-genproto v0.14.0 h1:yDqD260mICkjodXyAaDhESfrLr6gIGwwRc9MYE0jvW0=
