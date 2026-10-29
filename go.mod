@@ -387,3 +387,5 @@ replace github.com/xtls/xray-core v1.251202.0 => github.com/wyx2685/xray-core v0
 replace github.com/sagernet/sing-box => github.com/xshhhlol/sing-box_mod v0.0.0-20261022062220-7eae3c6fdd64
 
 replace github.com/sagernet/sing-anytls => github.com/xshhhlol/sing-anytls v0.0.0-20261021111646-31121aa21c4e
+
+replace github.com/sagernet/sing-vmess => github.com/xshhhlol/sing-vmess v0.0.0-20261029082549-dde2d54bccb7

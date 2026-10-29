@@ -1089,8 +1089,6 @@ github.com/sagernet/sing-tun v0.9.7-0.20261009020158-bca4bf029237 h1:B9tUcRf1FAa
 github.com/sagernet/sing-tun v0.9.7-0.20261009020158-bca4bf029237/go.mod h1:3EgPst7agntRO7D6GOsiZ1l9FoqdLeuWmKT5TnWkmf0=
 github.com/sagernet/sing-usbip v0.0.0-20260817040617-28bd42667eca h1:5wA+IE0Fq1CGVLOgSpm0gKKZ03HzugcJ2JyhmDqeX6A=
 github.com/sagernet/sing-usbip v0.0.0-20260817040617-28bd42667eca/go.mod h1:ADAZZU85MnM91XNhd2TdZRTaIbA7RjTZuQ1KCHcUbNg=
-github.com/sagernet/sing-vmess v0.2.9-0.20260929152519-9b95ab8c9478 h1:q2eQn4nq8oWGxRm9zXesXSlPr9GEgPrOGzf4iPtzG9A=
-github.com/sagernet/sing-vmess v0.2.9-0.20260929152519-9b95ab8c9478/go.mod h1:P11scgTxMxVVQ8dlM27yNm3Cro40mD0+gHbnqrNGDuY=
 github.com/sagernet/smux v1.5.50-sing-box-mod.1 h1:XkJcivBC9V4wBjiGXIXZ229aZCU1hzcbp6kSkkyQ478=
 github.com/sagernet/smux v1.5.50-sing-box-mod.1/go.mod h1:NjhsCEWedJm7eFLyhuBgIEzwfhRmytrUoiLluxs5Sk8=
 github.com/sagernet/tailscale v1.102.1-sing-box-1.14-mod.5 h1:mGLWVgj2Pl2NlgE1+sEUIDIMB42JdWEPwYmxTnVWg44=
@@ -1268,10 +1266,10 @@ github.com/xeipuuv/gojsonschema v1.2.0/go.mod h1:anYRn/JVcOK2ZgGU+IjEV4nwlhoK5sQ
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
 github.com/xshhhlol/sing-anytls v0.0.0-20261021111646-31121aa21c4e h1:tnJuzcgvOEsue4eFNTVRST0jnWvPo00WiTo/E/d6cVI=
 github.com/xshhhlol/sing-anytls v0.0.0-20261021111646-31121aa21c4e/go.mod h1:VRKLnj0ObEsN228h+zuzf91p+6sjtYE8SBaLPVsBy5o=
-github.com/xshhhlol/sing-box_mod v0.0.0-20261022051535-1ecec304db25 h1:Nf6hE7DlThCZT2c55O6NRgiJ/BRmI7mXJaqegj95qTc=
-github.com/xshhhlol/sing-box_mod v0.0.0-20261022051535-1ecec304db25/go.mod h1:Vhim68GEvZ7EWZxo159UC8FBsYdFyK0160yEecHIxuw=
 github.com/xshhhlol/sing-box_mod v0.0.0-20261022062220-7eae3c6fdd64 h1:gi58fd9xyW1XAEJ56eV8BMh0L+jJJnuGlgKrFEQjl5I=
 github.com/xshhhlol/sing-box_mod v0.0.0-20261022062220-7eae3c6fdd64/go.mod h1:Vhim68GEvZ7EWZxo159UC8FBsYdFyK0160yEecHIxuw=
+github.com/xshhhlol/sing-vmess v0.0.0-20261029082549-dde2d54bccb7 h1:gS1/f1iT4GlB8gIZT5vReLsbr2r+7RnKs+xog7qmzYo=
+github.com/xshhhlol/sing-vmess v0.0.0-20261029082549-dde2d54bccb7/go.mod h1:P11scgTxMxVVQ8dlM27yNm3Cro40mD0+gHbnqrNGDuY=
 github.com/xtls/reality v0.0.0-20260908045812-e1986a4d31ca h1:eugDuiZ7KGED+IFIBQIUsPJXThy+Wgp3MnroI8S11RE=
 github.com/xtls/reality v0.0.0-20260908045812-e1986a4d31ca/go.mod h1:DsJblcWDGt76+FVqBVwbwRhxyyNJsGV48gJLch0OOWI=
 github.com/yandex-cloud/go-genproto v0.14.0 h1:yDqD260mICkjodXyAaDhESfrLr6gIGwwRc9MYE0jvW0=
