@@ -20,8 +20,11 @@ import (
 	"github.com/InazumaV/V2bX/conf"
 	vCore "github.com/InazumaV/V2bX/core"
 	"github.com/InazumaV/V2bX/limiter"
+	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing-box/transport/v2ray"
 	vmess "github.com/sagernet/sing-vmess"
 	M "github.com/sagernet/sing/common/metadata"
+	N "github.com/sagernet/sing/common/network"
 )
 
 // captureConn records a client's first flight, to send it as a raw probe.
@@ -31,6 +34,27 @@ type captureConn struct {
 }
 
 func (c *captureConn) Write(p []byte) (int, error) { return c.data.Write(p) }
+
+type fragmentedFirstWriteConn struct {
+	net.Conn
+	started bool
+}
+
+func (c *fragmentedFirstWriteConn) Write(p []byte) (int, error) {
+	if c.started || len(p) <= 7 {
+		return c.Conn.Write(p)
+	}
+	c.started = true
+	n, err := c.Conn.Write(p[:7])
+	if err != nil {
+		return n, err
+	}
+	// Force a separate first read/TLS record, rather than relying on local
+	// TCP segmentation. The remainder is still the same valid VMess stream.
+	time.Sleep(10 * time.Millisecond)
+	m, err := c.Conn.Write(p[7:])
+	return n + m, err
+}
 
 // VMess nodes without transport answer probes with the built-in site, over
 // plain TCP as well as TLS, and keep serving real clients.
@@ -52,16 +76,20 @@ func TestVMessFallbackSiteAndHardening(t *testing.T) {
 	}
 	defer s.Close()
 
-	addNode := func(tag string, security int) string {
+	addNode := func(tag string, security int, transports ...string) string {
 		port := freeTCPPort(t)
 		info := &panel.NodeInfo{Type: "vmess", Security: security, VAllss: &panel.VAllssNode{Network: "tcp"}}
+		if len(transports) > 0 {
+			info.VAllss.Network = transports[0]
+			info.VAllss.NetworkSettings = json.RawMessage(`{"path":"/compat","serviceName":"compat"}`)
+		}
 		info.Common = &info.VAllss.CommonNode
 		info.Common.ServerPort = port
 		var options conf.Options
 		err := json.Unmarshal([]byte(fmt.Sprintf(`{"Core": "sing", "ListenIP": "127.0.0.1",
 			"CertConfig": {"CertMode": "file", "CertFile": %q, "KeyFile": %q},
 			"FallBackSite": {"Enable": true, "Root": %q, "RedirectHTTP": true},
-			"VMessConfig": {"RequireEncryption": true, "TrafficShaping": {"Enable": true}}}`, certFile, keyFile, root)), &options)
+			"VMessConfig": {"RequireEncryption": true, "HandshakeTimeout": 1, "TrafficShaping": {"Enable": true}}}`, certFile, keyFile, root)), &options)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -124,12 +152,27 @@ func TestVMessFallbackSiteAndHardening(t *testing.T) {
 			t.Fatalf("got %d %q", status, body)
 		}
 	})
-	t.Run("plain short garbage is answered at once", func(t *testing.T) {
+	t.Run("plain short garbage with EOF is answered at once", func(t *testing.T) {
 		conn := dialPlain(t, plainAddr)
 		conn.SetDeadline(time.Now().Add(2 * time.Second))
 		io.WriteString(conn, "hello\r\n")
+		if err := conn.(*net.TCPConn).CloseWrite(); err != nil {
+			t.Fatal(err)
+		}
 		if status, _ := readHTTP(t, conn); status != http.StatusBadRequest {
 			t.Fatalf("status %d", status)
+		}
+	})
+	t.Run("plain partial AuthID waits only for the handshake budget", func(t *testing.T) {
+		conn := dialPlain(t, plainAddr)
+		conn.SetDeadline(time.Now().Add(3 * time.Second))
+		start := time.Now()
+		io.WriteString(conn, "hello\r\n")
+		if status, _ := readHTTP(t, conn); status != http.StatusBadRequest {
+			t.Fatalf("status %d", status)
+		}
+		if elapsed := time.Since(start); elapsed < 800*time.Millisecond || elapsed > 2500*time.Millisecond {
+			t.Fatalf("partial request answered after %v", elapsed)
 		}
 	})
 	t.Run("plain binary line gets 400", func(t *testing.T) {
@@ -143,6 +186,9 @@ func TestVMessFallbackSiteAndHardening(t *testing.T) {
 	})
 	t.Run("plain client proxies", func(t *testing.T) {
 		echo(t, dialPlain(t, plainAddr), "auto")
+	})
+	t.Run("plain fragmented client proxies", func(t *testing.T) {
+		echo(t, &fragmentedFirstWriteConn{Conn: dialPlain(t, plainAddr)}, "auto")
 	})
 	t.Run("plain unencrypted client goes to the site", func(t *testing.T) {
 		client, _ := vmess.NewClient(user.Uuid, "none", 0)
@@ -177,6 +223,34 @@ func TestVMessFallbackSiteAndHardening(t *testing.T) {
 		echo(t, dialTLS(t, tlsAddr), "aes-128-gcm")
 		echo(t, dialTLS(t, tlsAddr), "none")
 	})
+	t.Run("TLS fragmented client proxies", func(t *testing.T) {
+		echo(t, &fragmentedFirstWriteConn{Conn: dialTLS(t, tlsAddr)}, "aes-128-gcm")
+		echo(t, &fragmentedFirstWriteConn{Conn: dialTLS(t, tlsAddr)}, "none")
+	})
+	for _, network := range []string{"ws", "grpc", "httpupgrade"} {
+		t.Run(network+" fragmented client proxies", func(t *testing.T) {
+			addr := addNode("vmess-transport-"+network, panel.None, network)
+			options := option.V2RayTransportOptions{
+				Type:               network,
+				WebsocketOptions:   option.V2RayWebsocketOptions{Path: "/compat"},
+				GRPCOptions:        option.V2RayGRPCOptions{ServiceName: "compat"},
+				HTTPUpgradeOptions: option.V2RayHTTPUpgradeOptions{Path: "/compat"},
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			transport, err := v2ray.NewClientTransport(ctx, &N.DefaultDialer{}, M.ParseSocksaddr(addr), options, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer transport.Close()
+			conn, err := transport.DialContext(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer conn.Close()
+			echo(t, &fragmentedFirstWriteConn{Conn: conn}, "auto")
+		})
+	}
 }
 
 func TestFallbackSiteApplies(t *testing.T) {

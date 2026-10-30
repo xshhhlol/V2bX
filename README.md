@@ -66,7 +66,7 @@ GOEXPERIMENT=jsonv2 go build -v -o build_assets/V2bX -tags "sing xray hysteria2 
 
 ### sing 内核的 TLS 回落网站
 
-Trojan / AnyTLS 节点可在节点配置中启用内置静态网站：
+Trojan / AnyTLS 的 TLS 节点，以及没有 HTTP header 等额外传输封装的 TCP VMess 节点，可在节点配置中启用内置静态网站：
 
 ```json
 "FallBackSite": {
@@ -78,6 +78,20 @@ Trojan / AnyTLS 节点可在节点配置中启用内置静态网站：
 将自己的 `index.html`、样式和其他页面放到该目录。目录为空或不存在时使用内置 Notes 示例网站，包含首页、关于页和样式文件；建议部署时替换为自己的内容。已指定 `FallBackConfigs` 时优先使用外部回落。
 
 网站支持 HTTP/1.1 和 HTTP/2、GET/HEAD、范围请求及条件缓存。内置资源使用内容 ETag，自定义文件使用 Last-Modified；缺失页面返回 404，不支持的方法返回 405，隐藏文件和没有首页的目录不提供列表。不会为了改变响应大小而随机追加内容。回落仅处理未认证连接，不改变正常代理业务的内容。
+
+VMess 可另外配置兼容现有客户端的下行整形和握手期限：
+
+```json
+"VMessConfig": {
+  "RequireEncryption": false,
+  "HandshakeTimeout": 30,
+  "TrafficShaping": { "Enable": true }
+}
+```
+
+`RequireEncryption` 只在没有外层 TLS 时生效；开启后会拒绝 none/CFB 客户端，因此保留此类客户端时使用 false。WS、gRPC、HTTPUpgrade 的请求由传输层处理，不会自动回落到上述静态网站。整形不改变应用数据，不要求新增客户端功能，也不保证流量与普通 HTTPS 无法区分。
+
+V2bX v1.4.1 起包含分段头部、完整时间戳窗口重放防护和旧版 alterId 兼容路径的修复，发布依赖已锁定到对应的 sing-vmess 提交。已有节点更新服务端二进制并重启后生效，客户端无需升级。本地开发可通过 go.work 使用并列的 sing-vmess，或使用 V2bX-script 仓库的 `build-vmess-local.sh` 构建本地修改。
 
 ## 免责声明
 
