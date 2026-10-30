@@ -30,10 +30,8 @@
       "SendIP": "0.0.0.0",
       "DeviceOnlineMinTraffic": 200,
       "MinReportTraffic": 0,
-      "TCPFastOpen": false,
-      "SniffEnabled": true,
       "CertConfig": {
-        "CertMode": "self",
+        "CertMode": "none",
         "RejectUnknownSni": false,
         "CertDomain": "example.com",
         "CertFile": "/etc/V2bX/fullchain.cer",
@@ -42,6 +40,23 @@
         "DNSEnv": {
           "EnvName": "env1"
         }
+      },
+      "EnableTFO": false,
+      "EnableSniff": true,
+      "ShadowsocksConfig": {
+        "HandshakeTimeout": 30,
+        "TrafficShaping": {
+          "Enable": true
+        },
+        "UDPPadding": {
+          "Enable": true,
+          "MaxPacketSize": 1280,
+          "MaxPaddingBytes": 256
+        }
+      },
+      "MultiplexConfig": {
+        "Enable": true,
+        "Padding": false
       }
     },
     {

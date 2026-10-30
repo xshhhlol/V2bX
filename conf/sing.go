@@ -43,6 +43,29 @@ type SingOptions struct {
 	Multiplex                *MultiplexConfig       `json:"MultiplexConfig"`
 	AnyTLS                   *AnyTLSConfig          `json:"AnyTLSConfig"`
 	VMess                    *VMessConfig           `json:"VMessConfig"`
+	Shadowsocks              *ShadowsocksConfig     `json:"ShadowsocksConfig"`
+}
+
+type ShadowsocksConfig struct {
+	HandshakeTimeout int                              `json:"HandshakeTimeout"`
+	TrafficShaping   *ShadowsocksTrafficShapingConfig `json:"TrafficShaping"`
+	UDPPadding       *ShadowsocksUDPPaddingConfig     `json:"UDPPadding"`
+}
+
+type ShadowsocksUDPPaddingConfig struct {
+	Enabled         bool `json:"Enable"`
+	MaxPacketSize   int  `json:"MaxPacketSize"`
+	MaxPaddingBytes int  `json:"MaxPaddingBytes"`
+}
+
+// These options affect encrypted downlink records only. They do not insert
+// bytes into application payloads or require new client protocol support.
+type ShadowsocksTrafficShapingConfig struct {
+	Enabled       bool `json:"Enable"`
+	MinRecordSize int  `json:"MinRecordSize"`
+	MaxRecordSize int  `json:"MaxRecordSize"`
+	MinRecords    int  `json:"MinRecords"`
+	MaxRecords    int  `json:"MaxRecords"`
 }
 
 type SingNtpConfig struct {

@@ -116,3 +116,26 @@ V2bX v1.4.1 起包含分段头部、完整时间戳窗口重放防护和旧版 a
 ## Stars 增长记录
 
 [![Stargazers over time](https://starchart.cc/xshhhlol/V2bX.svg)](https://starchart.cc/xshhhlol/V2bX)
+
+
+## Shadowsocks compatible hardening (v1.4.2)
+
+The sing core includes authenticated replay protection, consistent TCP handshake
+failure handling, optional downlink record shaping, SS2022 UDP padding within a
+configurable IP packet budget, and stable multi-user identities during updates.
+Existing client wire formats and panel key conventions are preserved.
+
+Example node options (omit optional sections to keep the previous sender):
+
+```json
+"ShadowsocksConfig": {
+  "HandshakeTimeout": 30,
+  "TrafficShaping": { "Enable": true },
+  "UDPPadding": { "Enable": true, "MaxPacketSize": 1280, "MaxPaddingBytes": 256 }
+},
+"MultiplexConfig": { "Enable": true, "Padding": false }
+```
+
+UDP padding applies only to SS2022. Ordinary clients can keep connecting without
+multiplexing. Settings do not eliminate random first flights or guarantee traffic
+classifier resistance. See the [configuration and validation details](https://github.com/xshhhlol/V2bX-script/blob/master/docs/shadowsocks-hardening.md).

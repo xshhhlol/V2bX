@@ -1,10 +1,13 @@
 # Build go
-FROM golang:1.26.3-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26.3-alpine AS builder
+ARG TARGETOS
+ARG TARGETARCH
+ARG VERSION=TempVersion
 WORKDIR /app
 COPY . .
 ENV CGO_ENABLED=0
 RUN GOEXPERIMENT=jsonv2 go mod download
-RUN GOEXPERIMENT=jsonv2 go build -v -o V2bX -tags "sing hysteria2 with_quic with_grpc with_utls with_wireguard with_acme with_gvisor"
+RUN GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} GOEXPERIMENT=jsonv2 go build -v -o V2bX -tags "sing hysteria2 with_quic with_grpc with_utls with_wireguard with_acme with_gvisor" -trimpath -ldflags "-X github.com/InazumaV/V2bX/cmd.version=${VERSION} -s -w -buildid="
 
 # Release
 FROM  alpine

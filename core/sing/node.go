@@ -3,14 +3,13 @@ package sing
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/netip"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
-
-	"encoding/json"
 
 	"github.com/InazumaV/V2bX/api/panel"
 	"github.com/InazumaV/V2bX/conf"
@@ -136,7 +135,7 @@ func getInboundOptions(tag string, info *panel.NodeInfo, c *conf.Options) (optio
 				if err != nil {
 					return option.Inbound{}, fmt.Errorf("decode NetworkSettings error: %s", err)
 				}
-				//Todo fix http options
+				// Todo fix http options
 				if network.Header.Type == "http" {
 					t.Type = network.Header.Type
 					var request HttpRequest
@@ -256,6 +255,9 @@ func getInboundOptions(tag string, info *panel.NodeInfo, c *conf.Options) (optio
 	case "shadowsocks":
 		in.Type = "shadowsocks"
 		n := info.Shadowsocks
+		if n.Cipher == "2022-blake3-chacha20-poly1305" {
+			return option.Inbound{}, fmt.Errorf("SS2022 ChaCha20 does not support this multi-user inbound; use 2022-blake3-aes-128-gcm or 2022-blake3-aes-256-gcm")
+		}
 		var keyLength int
 		switch n.Cipher {
 		case "2022-blake3-aes-128-gcm":
@@ -269,6 +271,21 @@ func getInboundOptions(tag string, info *panel.NodeInfo, c *conf.Options) (optio
 			ListenOptions: listen,
 			Method:        n.Cipher,
 			Multiplex:     multiplex,
+		}
+		if settings := c.SingOptions.Shadowsocks; settings != nil {
+			if settings.HandshakeTimeout < 0 || settings.HandshakeTimeout > 300 {
+				return option.Inbound{}, fmt.Errorf("SS handshake timeout must be between 0 and 300 seconds")
+			}
+			ssoption.HandshakeTimeout = badoption.Duration(time.Duration(settings.HandshakeTimeout) * time.Second)
+			if padding := settings.UDPPadding; padding != nil && strings.HasPrefix(n.Cipher, "2022-") {
+				ssoption.UDPPadding = &option.ShadowsocksUDPPaddingOptions{Enabled: padding.Enabled, MaxPacketSize: padding.MaxPacketSize, MaxPaddingBytes: padding.MaxPaddingBytes}
+			}
+			if shaping := settings.TrafficShaping; shaping != nil {
+				ssoption.TrafficShaping = &option.ShadowsocksTrafficShapingOptions{
+					Enabled: shaping.Enabled, MinRecordSize: shaping.MinRecordSize, MaxRecordSize: shaping.MaxRecordSize,
+					MinRecords: shaping.MinRecords, MaxRecords: shaping.MaxRecords,
+				}
+			}
 		}
 		p := make([]byte, keyLength)
 		_, _ = rand.Read(p)
@@ -439,7 +456,6 @@ func (b *Sing) AddNode(tag string, info *panel.NodeInfo, config *conf.Options) e
 		c.Type,
 		c.Options,
 	)
-
 	if err != nil {
 		return fmt.Errorf("add inbound error: %s", err)
 	}

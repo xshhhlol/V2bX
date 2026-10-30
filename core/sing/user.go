@@ -3,6 +3,7 @@ package sing
 import (
 	"encoding/base64"
 	"errors"
+	"fmt"
 
 	"github.com/InazumaV/V2bX/api/panel"
 	"github.com/InazumaV/V2bX/common/counter"
@@ -25,9 +26,6 @@ func (b *Sing) AddUsers(p *core.AddUsersParams) (added int, err error) {
 	}
 	b.users.mapLock.Lock()
 	defer b.users.mapLock.Unlock()
-	for i := range p.Users {
-		b.users.uidMap[p.Users[i].Uuid] = p.Users[i].Id
-	}
 	switch p.NodeInfo.Type {
 	case "vless":
 		us := make([]option.VLESSUser, len(p.Users))
@@ -51,12 +49,9 @@ func (b *Sing) AddUsers(p *core.AddUsersParams) (added int, err error) {
 	case "shadowsocks":
 		us := make([]option.ShadowsocksUser, len(p.Users))
 		for i := range p.Users {
-			var password = p.Users[i].Uuid
-			switch p.Shadowsocks.Cipher {
-			case "2022-blake3-aes-128-gcm":
-				password = base64.StdEncoding.EncodeToString([]byte(password[:16]))
-			case "2022-blake3-aes-256-gcm":
-				password = base64.StdEncoding.EncodeToString([]byte(password[:32]))
+			password, passwordErr := shadowsocksUserPassword(p.Users[i].Uuid, p.Shadowsocks.Cipher)
+			if passwordErr != nil {
+				return 0, passwordErr
 			}
 			us[i] = option.ShadowsocksUser{
 				Name:     p.Users[i].Uuid,
@@ -118,7 +113,29 @@ func (b *Sing) AddUsers(p *core.AddUsersParams) (added int, err error) {
 	if err != nil {
 		return 0, err
 	}
+	for i := range p.Users {
+		b.users.uidMap[p.Users[i].Uuid] = p.Users[i].Id
+	}
 	return len(p.Users), err
+}
+
+// Preserve the panel's existing subscription convention. Changing this to
+// random PSKs requires a coordinated panel/client migration.
+func shadowsocksUserPassword(value, method string) (string, error) {
+	length := 0
+	switch method {
+	case "2022-blake3-aes-128-gcm":
+		length = 16
+	case "2022-blake3-aes-256-gcm":
+		length = 32
+	}
+	if length == 0 {
+		return value, nil
+	}
+	if len(value) < length {
+		return "", fmt.Errorf("SS2022 user credential must contain at least %d bytes for %s", length, method)
+	}
+	return base64.StdEncoding.EncodeToString([]byte(value[:length])), nil
 }
 
 func (b *Sing) GetUserTraffic(tag, uuid string, reset bool) (up int64, down int64) {
