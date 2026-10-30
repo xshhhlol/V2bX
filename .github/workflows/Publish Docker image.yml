@@ -63,6 +63,14 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
 
+      - name: Verify image version
+        shell: bash
+        run: |
+          docker run --rm --platform '${{ matrix.platform }}' --entrypoint /usr/local/bin/V2bX \
+            '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}' version > /tmp/v2bx-version.txt
+          cat /tmp/v2bx-version.txt
+          grep -F 'V2bX ${{ steps.meta.outputs.version }} (' /tmp/v2bx-version.txt
+
       - name: Export digest
         run: |
           mkdir -p /tmp/digests
