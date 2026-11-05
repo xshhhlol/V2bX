@@ -8,6 +8,8 @@ A V2board node server based on multi core, modified from XrayR.
 
 **注意： 本项目需要搭配[修改版V2board](https://github.com/wyx2685/v2board)**
 
+一键安装和卸载由[维护脚本](https://github.com/xshhhlol/V2bX-script)管理。Ubuntu / Debian 卸载时可选择是否删除 nginx、HAProxy，Python 始终保留；安装来源不明的旧组件会单独确认，独立运行的系统 Web 服务保持不动。已有机器先运行 `V2bX update_shell`，再运行 `V2bX uninstall`，详见[外部前端及卸载说明](https://github.com/xshhhlol/V2bX-script/blob/master/docs/external-web.md)。
+
 ## 特点
 
 * 永久开源且免费。
