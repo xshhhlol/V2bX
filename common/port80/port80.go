@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/InazumaV/V2bX/common/webpage"
 	"github.com/go-acme/lego/v4/challenge/http01"
 	log "github.com/sirupsen/logrus"
 )
@@ -20,10 +21,11 @@ import (
 var listenAddr = ":80"
 
 var (
-	access   sync.Mutex
-	tokens   = map[string]challenge{}
-	redirect bool
-	server   *http.Server
+	access        sync.Mutex
+	tokens        = map[string]challenge{}
+	redirect      bool
+	server        *http.Server
+	frontendMoved bool
 )
 
 type challenge struct {
@@ -80,6 +82,7 @@ func start() error {
 		return err
 	}
 	s := &http.Server{
+		Addr:              listener.Addr().String(),
 		Handler:           http.HandlerFunc(serveHTTP),
 		ReadHeaderTimeout: 30 * time.Second,
 	}
@@ -90,6 +93,44 @@ func start() error {
 		}
 	}()
 	return nil
+}
+
+// MoveToLoopback lets the external web server own public port 80 while ACME
+// challenges continue using the same provider behind its reverse proxy.
+func MoveToLoopback() (string, func(), error) {
+	access.Lock()
+	defer access.Unlock()
+	if frontendMoved {
+		return "", nil, errors.New("public HTTP frontend is already managed by another core")
+	}
+	previous := listenAddr
+	if server != nil {
+		server.Close()
+		server = nil
+	}
+	listenAddr = "127.0.0.1:0"
+	if err := start(); err != nil {
+		listenAddr = previous
+		if redirect || len(tokens) > 0 {
+			_ = start()
+		}
+		return "", nil, err
+	}
+	addr := server.Addr
+	frontendMoved = true
+	return addr, func() {
+		access.Lock()
+		defer access.Unlock()
+		if server != nil {
+			server.Close()
+			server = nil
+		}
+		listenAddr = previous
+		frontendMoved = false
+		if redirect || len(tokens) > 0 {
+			_ = start()
+		}
+	}, nil
 }
 
 func stopIfIdle() {
@@ -103,6 +144,7 @@ func stopIfIdle() {
 }
 
 func serveHTTP(w http.ResponseWriter, r *http.Request) {
+	w = webpage.Wrap(w, r, nil)
 	host := r.Host
 	if h, _, err := net.SplitHostPort(host); err == nil {
 		host = h

@@ -384,7 +384,7 @@ require (
 
 replace github.com/xtls/xray-core v1.251202.0 => github.com/wyx2685/xray-core v0.0.0-20251202200223-63db1dc9e9e2
 
-replace github.com/sagernet/sing-box => github.com/xshhhlol/sing-box_mod v0.0.0-20261105070254-fafc33d4f48e
+replace github.com/sagernet/sing-box => github.com/xshhhlol/sing-box_mod v0.0.0-20261105081330-df03ae989157
 
 replace github.com/sagernet/sing-anytls => github.com/xshhhlol/sing-anytls v0.0.0-20261021111646-31121aa21c4e
 

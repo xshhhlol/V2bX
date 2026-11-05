@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/InazumaV/V2bX/common/externalweb"
 
 	"github.com/spf13/cobra"
 )
@@ -22,6 +23,14 @@ var versionCommand = cobra.Command{
 
 func init() {
 	command.AddCommand(&versionCommand)
+	command.AddCommand(&cobra.Command{Use: "features", Short: "Print optional deployment capabilities", Run: func(cmd *cobra.Command, args []string) {
+		if externalweb.SupportsTLSProxy() {
+			fmt.Println("external-web-v1")
+		}
+		if externalweb.SupportsAllTLSProxies() {
+			fmt.Println("external-web-v2")
+		}
+	}})
 }
 
 func showVersion() {

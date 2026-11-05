@@ -18,6 +18,7 @@ import (
 
 	"github.com/InazumaV/V2bX/api/panel"
 	"github.com/InazumaV/V2bX/common/port80"
+	"github.com/InazumaV/V2bX/common/webpage"
 	"github.com/InazumaV/V2bX/conf"
 	"github.com/sagernet/sing-box/log"
 )
@@ -190,6 +191,7 @@ func siteFS(root string) fs.FS {
 func siteHandler(fsys fs.FS) http.Handler {
 	fileServer := http.FileServerFS(fsys)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w = webpage.Wrap(w, r, fsys)
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			w.Header().Set("Allow", "GET, HEAD")
 			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)

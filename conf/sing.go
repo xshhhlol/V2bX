@@ -39,11 +39,19 @@ type SingOptions struct {
 	DomainStrategy           option.DomainStrategy  `json:"DomainStrategy"`
 	FallBackConfigs          *FallBackConfigForSing `json:"FallBackConfigs"`
 	FallBackSite             *FallBackSiteConfig    `json:"FallBackSite"`
+	ExternalWeb              *ExternalWebConfig     `json:"ExternalWeb"`
 	ALPN                     []string               `json:"ALPN"`
 	Multiplex                *MultiplexConfig       `json:"MultiplexConfig"`
 	AnyTLS                   *AnyTLSConfig          `json:"AnyTLSConfig"`
 	VMess                    *VMessConfig           `json:"VMessConfig"`
 	Shadowsocks              *ShadowsocksConfig     `json:"ShadowsocksConfig"`
+}
+
+// ExternalWeb keeps public TLS and HTTP on HAProxy/OpenSSL and nginx. The
+// private Trojan/VMess/AnyTLS listener is loopback-only; clients keep their panel address.
+type ExternalWebConfig struct {
+	Enabled     bool   `json:"Enable"`
+	BackendPort uint16 `json:"-"`
 }
 
 type ShadowsocksConfig struct {

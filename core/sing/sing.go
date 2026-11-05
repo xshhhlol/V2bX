@@ -3,6 +3,7 @@ package sing
 import (
 	"context"
 	"fmt"
+	"github.com/InazumaV/V2bX/common/externalweb"
 	"os"
 	"sync"
 
@@ -33,6 +34,7 @@ type Sing struct {
 	users                     *UserMap
 	nodeReportMinTrafficBytes map[string]int64
 	sites                     fallbackSites
+	frontends                 externalweb.Manager
 }
 
 type UserMap struct {
@@ -102,6 +104,7 @@ func (b *Sing) Start() error {
 }
 
 func (b *Sing) Close() error {
+	b.frontends.Close()
 	b.sites.Close()
 	return b.box.Close()
 }

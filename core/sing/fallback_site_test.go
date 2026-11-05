@@ -352,6 +352,9 @@ func TestFallbackSiteHTTPBehavior(t *testing.T) {
 				if tc.code == 405 && response.Header.Get("Allow") != "GET, HEAD" {
 					t.Fatal("missing Allow header")
 				}
+				if !strings.HasPrefix(response.Header.Get("Content-Type"), "text/html") || strings.Contains(body, "404 page not found") {
+					t.Fatalf("default framework error response: %v %q", response.Header, body)
+				}
 			}
 		})
 	}

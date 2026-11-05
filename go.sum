@@ -1266,6 +1266,8 @@ github.com/xshhhlol/sing-anytls v0.0.0-20261021111646-31121aa21c4e h1:tnJuzcgvOE
 github.com/xshhhlol/sing-anytls v0.0.0-20261021111646-31121aa21c4e/go.mod h1:VRKLnj0ObEsN228h+zuzf91p+6sjtYE8SBaLPVsBy5o=
 github.com/xshhhlol/sing-box_mod v0.0.0-20261105070254-fafc33d4f48e h1:2L651jqdLDtXdOIERIzEJpvi+pc1BX3qR5KdNkx4pYc=
 github.com/xshhhlol/sing-box_mod v0.0.0-20261105070254-fafc33d4f48e/go.mod h1:0ZFCTVfJmnlImsG5oxVnWbiWDQuiYBaySd//sjf+aZM=
+github.com/xshhhlol/sing-box_mod v0.0.0-20261105081330-df03ae989157 h1:faWx9POZem4Hzjyk1rpCyAkjD7y8Bm3wdxH9Uei5V50=
+github.com/xshhhlol/sing-box_mod v0.0.0-20261105081330-df03ae989157/go.mod h1:0ZFCTVfJmnlImsG5oxVnWbiWDQuiYBaySd//sjf+aZM=
 github.com/xshhhlol/sing-shadowsocks v0.0.0-20261030083525-00161623d8fd h1:7ndx+DPRtCIl+LaHwv2aO7tGZJadGdWEMDghGIHCTq4=
 github.com/xshhhlol/sing-shadowsocks v0.0.0-20261030083525-00161623d8fd/go.mod h1:COqm/+YJQjPTB1r0F5e85wXMos49eIuFHTYyBPZJ8tM=
 github.com/xshhhlol/sing-vmess v0.0.0-20261030035536-9a2d3098d4f6 h1:OKRs1IO+hFsoe5NHNDTCfDNcR/Uw3Uca04I35CcgeOk=

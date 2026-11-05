@@ -70,3 +70,43 @@ func TestChallengeAndRedirect(t *testing.T) {
 		t.Fatalf("port still open after disabling redirect: %d", code)
 	}
 }
+
+func TestExternalFrontendMovesAndRestoresChallengeListener(t *testing.T) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	listenAddr = l.Addr().String()
+	l.Close()
+	provider := Provider{}
+	if err = provider.Present("node.example", "move-token", "key-auth"); err != nil {
+		t.Fatal(err)
+	}
+	defer provider.CleanUp("node.example", "move-token", "key-auth")
+	original := listenAddr
+	moved, restore, err := MoveToLoopback()
+	if err != nil {
+		t.Fatal(err)
+	}
+	readChallenge := func(addr string) {
+		t.Helper()
+		req, _ := http.NewRequest("GET", "http://"+addr+"/.well-known/acme-challenge/move-token", nil)
+		req.Host = "node.example"
+		response, err := (&http.Client{Timeout: time.Second}).Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer response.Body.Close()
+		body, _ := io.ReadAll(response.Body)
+		if response.StatusCode != 200 || string(body) != "key-auth" {
+			t.Fatal("ACME state lost")
+		}
+	}
+	readChallenge(moved)
+	if _, _, err = MoveToLoopback(); err == nil {
+		t.Fatal("second core stole the ACME listener")
+	}
+	readChallenge(moved)
+	restore()
+	readChallenge(original)
+}

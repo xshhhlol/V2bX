@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/InazumaV/V2bX/api/panel"
+	"github.com/InazumaV/V2bX/common/externalweb"
 	"github.com/InazumaV/V2bX/conf"
 	"github.com/sagernet/sing-box/option"
 	F "github.com/sagernet/sing/common/format"
@@ -58,6 +59,17 @@ func getInboundOptions(tag string, info *panel.NodeInfo, c *conf.Options) (optio
 		Listen:      (*badoption.Addr)(&addr),
 		ListenPort:  uint16(info.Common.ServerPort),
 		TCPFastOpen: c.SingOptions.TCPFastOpen,
+	}
+	external := c.SingOptions.ExternalWeb
+	if external != nil && external.Enabled {
+		if err := validateExternalWeb(info, c); err != nil {
+			return option.Inbound{}, err
+		}
+		if external.BackendPort == 0 {
+			return option.Inbound{}, fmt.Errorf("external web backend was not prepared")
+		}
+		loopback := badoption.Addr(netip.MustParseAddr("127.0.0.1"))
+		listen.Listen, listen.ListenPort = &loopback, external.BackendPort
 	}
 	var multiplex *option.InboundMultiplexOptions
 	if c.SingOptions.Multiplex != nil {
@@ -117,6 +129,12 @@ func getInboundOptions(tag string, info *panel.NodeInfo, c *conf.Options) (optio
 			},
 			MaxTimeDifference: badoption.Duration(mtd),
 		}
+	}
+	// The public link remains TLS-protected by OpenSSL; only the private
+	// loopback backend is plaintext. Keep this distinction for VMess policy.
+	externalTLS := external != nil && external.Enabled
+	if externalTLS {
+		tls.Enabled = false
 	}
 	in := option.Inbound{
 		Tag: tag,
@@ -231,15 +249,20 @@ func getInboundOptions(tag string, info *panel.NodeInfo, c *conf.Options) (optio
 				Multiplex: multiplex,
 			}
 			// With a transport, probes are answered by its HTTP layer.
+			if externalTLS {
+				if err := externalweb.EnableTLSProxy(vmessOption); err != nil {
+					return option.Inbound{}, err
+				}
+			}
 			if t.Type == "" {
 				vmessOption.Fallback, vmessOption.FallbackForALPN = getFallbackOptions(c)
-				if !tls.Enabled {
+				if !tls.Enabled && !externalTLS {
 					vmessOption.FallbackForALPN = nil
 				}
 			}
 			if vmessConfig := c.SingOptions.VMess; vmessConfig != nil {
 				vmessOption.HandshakeTimeout = badoption.Duration(time.Duration(vmessConfig.HandshakeTimeout) * time.Second)
-				vmessOption.RequireEncryption = vmessConfig.RequireEncryption && !tls.Enabled
+				vmessOption.RequireEncryption = vmessConfig.RequireEncryption && !tls.Enabled && !externalTLS
 				if shaping := vmessConfig.TrafficShaping; shaping != nil && shaping.Enabled {
 					vmessOption.ResponseShaping = &option.VMessResponseShapingOptions{
 						Enabled:       true,
@@ -361,6 +384,11 @@ func getInboundOptions(tag string, info *panel.NodeInfo, c *conf.Options) (optio
 			Transport: &t,
 			Multiplex: multiplex,
 		}
+		if external != nil && external.Enabled {
+			if err := externalweb.EnableTLSProxy(trojanoption); err != nil {
+				return option.Inbound{}, err
+			}
+		}
 		trojanoption.Fallback, trojanoption.FallbackForALPN = getFallbackOptions(c)
 		in.Options = trojanoption
 	case "tuic":
@@ -384,6 +412,11 @@ func getInboundOptions(tag string, info *panel.NodeInfo, c *conf.Options) (optio
 			},
 		}
 		anytlsOption.Fallback, anytlsOption.FallbackForALPN = getFallbackOptions(c)
+		if externalTLS {
+			if err := externalweb.EnableTLSProxy(anytlsOption); err != nil {
+				return option.Inbound{}, err
+			}
+		}
 		if anyTLS := c.SingOptions.AnyTLS; anyTLS != nil {
 			anytlsOption.HandshakeTimeout = badoption.Duration(time.Duration(anyTLS.HandshakeTimeout) * time.Second)
 			if shaping := anyTLS.TrafficShaping; shaping != nil && shaping.Enabled {
@@ -439,7 +472,13 @@ func getInboundOptions(tag string, info *panel.NodeInfo, c *conf.Options) (optio
 
 func (b *Sing) AddNode(tag string, info *panel.NodeInfo, config *conf.Options) error {
 	b.nodeReportMinTrafficBytes[tag] = config.ReportMinTraffic * 1024
-	config, err := b.applyFallbackSite(info, config)
+	var externalPlan *externalweb.Node
+	var err error
+	if config.SingOptions.ExternalWeb != nil && config.SingOptions.ExternalWeb.Enabled {
+		externalPlan, config, err = prepareExternalWeb(tag, info, config)
+	} else {
+		config, err = b.applyFallbackSite(info, config)
+	}
 	if err != nil {
 		return fmt.Errorf("start fallback site error: %s", err)
 	}
@@ -459,6 +498,12 @@ func (b *Sing) AddNode(tag string, info *panel.NodeInfo, config *conf.Options) e
 	if err != nil {
 		return fmt.Errorf("add inbound error: %s", err)
 	}
+	if externalPlan != nil {
+		if err = b.frontends.Add(*externalPlan); err != nil {
+			_ = in.Remove(tag)
+			return err
+		}
+	}
 	return nil
 }
 
@@ -468,7 +513,7 @@ func (b *Sing) DelNode(tag string) error {
 	if err != nil {
 		return fmt.Errorf("delete inbound error: %s", err)
 	}
-	return nil
+	return b.frontends.Remove(tag)
 }
 
 // panelServerName returns the SNI the panel hands out to clients.
