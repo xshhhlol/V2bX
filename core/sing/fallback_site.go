@@ -132,10 +132,15 @@ func (s *fallbackSites) serve(config *conf.FallBackSiteConfig) (string, string, 
 			}
 			return "", "", err
 		}
+		// Unauthenticated connections reach this site without user limits.
+		// WriteTimeout keeps a client that never reads its response from
+		// holding a response, like a web server's send timeout; the header
+		// wait is shared with the proxy handshake by the inbound itself.
 		server := &http.Server{
 			Handler:           handler,
 			Protocols:         new(http.Protocols),
 			ReadHeaderTimeout: 30 * time.Second,
+			WriteTimeout:      2 * time.Minute,
 			IdleTimeout:       2 * time.Minute,
 		}
 		if i == 0 {
