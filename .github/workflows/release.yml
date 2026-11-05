@@ -27,7 +27,11 @@ permissions:
 jobs:
 
   validate:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -42,7 +46,9 @@ jobs:
         env:
           GOWORK: 'off'
           GOEXPERIMENT: jsonv2
-        run: go test -race -tags "sing with_quic with_grpc with_utls with_wireguard with_acme with_gvisor" ./core/sing -timeout 120s
+        run: |
+          python3 -m unittest discover -s common/externalweb -p '*_test.py'
+          go test -race -tags "sing with_quic with_grpc with_utls with_wireguard with_acme with_gvisor" ./core/sing ./common/externalweb ./common/port80 ./common/webpage -timeout 120s
 
   build:
     needs: validate
@@ -203,3 +209,13 @@ jobs:
           file: ./V2bX-${{ steps.get_filename.outputs.ASSET_NAME }}.zip*
           tag: ${{ github.ref }}
           file_glob: true
+
+  promote-release:
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Make the completed release available to the installer
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --latest

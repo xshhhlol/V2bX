@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -88,6 +89,7 @@ func (m *Manager) Add(node Node) error {
 	}
 	if m.cmd == nil {
 		if err := m.start(); err != nil {
+			m.recordFailure(err)
 			return err
 		}
 	}
@@ -97,6 +99,7 @@ func (m *Manager) Add(node Node) error {
 		err = m.publish()
 	}
 	if err != nil {
+		m.recordFailure(err)
 		delete(m.nodes, node.Tag)
 		if len(m.nodes) == 0 {
 			m.close()
@@ -239,7 +242,34 @@ func (m *Manager) publish() error {
 		return err
 	}
 	m.published = true
+	os.Remove(m.failurePath())
 	return nil
+}
+
+func (m *Manager) failurePath() string {
+	return strings.TrimSuffix(m.statusPath(), ".json") + ".error.json"
+}
+
+// Keep startup errors outside the temporary child directory so the wizard
+// can report a definitive failure even after this process has exited.
+func (m *Manager) recordFailure(failure error) {
+	if m.StatusFile == "" && m.dir == "" && (runtime.GOOS != "linux" || os.Geteuid() != 0) {
+		return
+	}
+	path := m.failurePath()
+	if os.MkdirAll(filepath.Dir(path), 0700) != nil {
+		return
+	}
+	data, err := json.Marshal(struct {
+		PID   int    `json:"pid"`
+		Error string `json:"error"`
+	}{os.Getpid(), failure.Error()})
+	if err != nil {
+		return
+	}
+	if os.WriteFile(path+".tmp", data, 0600) == nil {
+		_ = os.Rename(path+".tmp", path)
+	}
 }
 
 func (m *Manager) close() {

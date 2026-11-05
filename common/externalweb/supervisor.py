@@ -110,7 +110,9 @@ class Supervisor:
 
     def command(self, name):
         if name == "nginx":
-            return [self.nginx, "-e", "stderr", "-p", str(self.directory) + "/", "-c", str(self.directory / "nginx.conf")]
+            # Ubuntu 22.04 ships nginx 1.18, which has no -e option. The
+            # generated config already directs runtime errors to stderr.
+            return [self.nginx, "-p", str(self.directory) + "/", "-c", str(self.directory / "nginx.conf")]
         return [self.haproxy, "-f", str(self.directory / "haproxy.cfg")]
 
     def apply(self, manifest):
