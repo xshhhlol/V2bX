@@ -37,7 +37,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.26.3'
+          go-version-file: go.mod
       - name: Install external web test dependencies
         run: |
           sudo apt-get update
@@ -49,7 +49,7 @@ jobs:
         run: |
           python3 -m unittest discover -s common/externalweb -p '*_test.py'
           go test -race -tags "sing xray with_quic with_grpc with_utls with_wireguard with_acme with_gvisor" ./core/sing ./common/externalweb ./common/port80 ./common/webpage -timeout 120s
-          go test -race -tags xray ./core/xray ./conf -run '^TestX(HTTPValidation|rayALPN.*)$' -timeout 60s
+          go test -race -tags xray ./core/xray ./core/xray/app/dispatcher ./conf -run '^TestX(HTTPValidation|ray.*)$' -timeout 60s
           # Pinned upstream Xray has races in TLS hot reload and its XHTTP client.
           # Exercise actual H3 sessions separately; keep the regression test intact.
           go test -tags xray ./core/xray -run '^TestXHTTP.*RoundTrip$' -timeout 90s
@@ -141,7 +141,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.26.3'
+          go-version-file: go.mod
 
       - name: Get project dependencies
         run: |

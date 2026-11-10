@@ -79,7 +79,7 @@ func buildInbound(option *conf.Options, nodeInfo *panel.NodeInfo, tag string) (*
 	// Set SniffingConfig
 	sniffingConfig := &coreConf.SniffingConfig{
 		Enabled:      true,
-		DestOverride: &coreConf.StringList{"http", "tls"},
+		DestOverride: coreConf.StringList{"http", "tls"},
 	}
 	if option.XrayOptions.DisableSniffing {
 		sniffingConfig.Enabled = false
@@ -269,7 +269,11 @@ func buildV2ray(config *conf.Options, nodeInfo *panel.NodeInfo, inbound *coreCon
 		if v.Flow != "" {
 			return errors.New("XHTTP requires an empty VLESS flow; Vision is for raw TCP")
 		}
-		err := json.Unmarshal(settings, &inbound.StreamSetting.SplitHTTPSettings)
+		settings, err := normalizeXHTTPSettings(settings)
+		if err != nil {
+			return fmt.Errorf("normalize xhttp settings: %w", err)
+		}
+		err = json.Unmarshal(settings, &inbound.StreamSetting.SplitHTTPSettings)
 		if err != nil {
 			return fmt.Errorf("unmarshal xhttp settings error: %s", err)
 		}
@@ -330,6 +334,9 @@ func buildTrojan(config *conf.Options, nodeInfo *panel.NodeInfo, inbound *coreCo
 func buildShadowsocks(config *conf.Options, nodeInfo *panel.NodeInfo, inbound *coreConf.InboundDetourConfig) error {
 	inbound.Protocol = "shadowsocks"
 	s := nodeInfo.Shadowsocks
+	if strings.EqualFold(s.Cipher, "none") || strings.EqualFold(s.Cipher, "plain") {
+		return errors.New("Shadowsocks none/plain ciphers are not supported by the upstream Xray core")
+	}
 	settings := &coreConf.ShadowsocksServerConfig{
 		Cipher: s.Cipher,
 	}

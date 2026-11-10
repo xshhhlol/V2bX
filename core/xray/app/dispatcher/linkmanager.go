@@ -22,14 +22,21 @@ func (w *ManagedWriter) Close() error {
 }
 
 type LinkManager struct {
-	links map[*ManagedWriter]buf.Reader
-	mu    sync.Mutex
+	links  map[*ManagedWriter]buf.Reader
+	mu     sync.Mutex
+	closed bool
 }
 
 func (m *LinkManager) AddLink(writer *ManagedWriter, reader buf.Reader) {
 	m.mu.Lock()
-	defer m.mu.Unlock()
+	if m.closed {
+		m.mu.Unlock()
+		common.Close(writer)
+		common.Interrupt(reader)
+		return
+	}
 	m.links[writer] = reader
+	m.mu.Unlock()
 }
 
 func (m *LinkManager) RemoveWriter(writer *ManagedWriter) {
@@ -39,7 +46,13 @@ func (m *LinkManager) RemoveWriter(writer *ManagedWriter) {
 }
 
 func (m *LinkManager) CloseAll() {
-	for w, r := range m.links {
+	m.mu.Lock()
+	m.closed = true
+	links := m.links
+	m.links = nil
+	m.mu.Unlock()
+	// Closing a ManagedWriter calls RemoveWriter; do not hold mu here.
+	for w, r := range links {
 		common.Close(w)
 		common.Interrupt(r)
 	}

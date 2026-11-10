@@ -1,0 +1,84 @@
+name: Xray upgrade compatibility
+
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: 'Official Xray tag or commit (empty = latest stable release)'
+        required: false
+        default: ''
+  schedule:
+    - cron: '23 3 * * 1'
+  pull_request:
+    paths:
+      - 'core/xray/**'
+      - 'conf/**'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Dockerfile'
+      - '.github/workflows/xray-compat.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  compatibility:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GOWORK: 'off'
+      GOEXPERIMENT: jsonv2
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      # PRs test the pinned dependency; scheduled/manual runs test a candidate
+      # in this disposable checkout. They never publish or modify a branch.
+      - name: Resolve official release commit
+        if: github.event_name != 'pull_request'
+        env:
+          REQUESTED_REVISION: ${{ inputs.revision }}
+        run: |
+          revision="$REQUESTED_REVISION"
+          if [ -z "$revision" ]; then
+            revision=$(gh api repos/XTLS/Xray-core/releases/latest --jq .tag_name)
+          fi
+          commit=$(gh api "repos/XTLS/Xray-core/commits/$revision" --jq .sha)
+          echo "Candidate: $revision ($commit)" >> "$GITHUB_STEP_SUMMARY"
+          go get "github.com/xtls/xray-core@$commit"
+          go mod tidy
+      - name: Check configuration and dispatcher compatibility
+        run: |
+          go version
+          go list -m github.com/xtls/xray-core
+          go test -race -tags xray ./core/xray ./core/xray/app/dispatcher ./conf -run '^TestX(HTTPValidation|ray.*)$' -timeout 90s
+      - name: Exercise H2, H3 and separate upload/download entries
+        run: go test -tags xray ./core/xray -run '^TestXHTTP.*RoundTrip$' -count=1 -timeout 90s
+      - name: Build all cores together
+        run: |
+          go test -race -tags "sing xray with_quic with_grpc with_utls with_wireguard with_acme with_gvisor" ./core/sing -run '^TestXraySharedReality$' -count=1 -timeout 60s
+          go build -tags "sing xray hysteria2 with_quic with_grpc with_utls with_wireguard with_acme with_gvisor" -o /tmp/V2bX .
+      - name: Probe upstream TLS and session races
+        id: session-races
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          go test -race -tags xray ./core/xray -run '^TestXHTTP.*RoundTrip$' -count=1 -timeout 90s 2>&1 | tee xray-session-races.log
+      - name: Report session race probe
+        if: always()
+        env:
+          RACE_OUTCOME: ${{ steps.session-races.outcome }}
+        run: |
+          echo "Full session race probe (known upstream TLS issue, informational): $RACE_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
+      - name: Save candidate dependency changes
+        if: always()
+        run: git diff -- go.mod go.sum > xray-dependency.diff
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xray-dependency-diff
+          path: |
+            xray-dependency.diff
+            xray-session-races.log

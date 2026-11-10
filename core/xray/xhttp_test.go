@@ -170,7 +170,11 @@ func xhttpClient(t *testing.T, upload, download int, mode, id, certFile, alpn st
 	if download != 0 {
 		transport["extra"] = map[string]any{"downloadSettings": map[string]any{"address": "127.0.0.1", "port": download, "network": "xhttp", "security": "tls", "tlsSettings": tlsSettings, "xhttpSettings": map[string]any{"path": "/test"}}}
 	}
-	data, err := json.Marshal(map[string]any{"log": map[string]any{"loglevel": "error"}, "outbounds": []any{map[string]any{"protocol": "vless", "settings": map[string]any{"vnext": []any{map[string]any{"address": "127.0.0.1", "port": upload, "users": []any{map[string]any{"id": id, "encryption": "none"}}}}}, "streamSettings": map[string]any{"network": "xhttp", "security": "tls", "tlsSettings": tlsSettings, "xhttpSettings": transport}}}})
+	logLevel := "error"
+	if testing.Verbose() {
+		logLevel = "debug"
+	}
+	data, err := json.Marshal(map[string]any{"log": map[string]any{"loglevel": logLevel}, "outbounds": []any{map[string]any{"protocol": "vless", "settings": map[string]any{"vnext": []any{map[string]any{"address": "127.0.0.1", "port": upload, "users": []any{map[string]any{"id": id, "encryption": "none"}}}}}, "streamSettings": map[string]any{"network": "xhttp", "security": "tls", "tlsSettings": tlsSettings, "xhttpSettings": transport}}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -243,6 +247,20 @@ func xhttpRoundTrip(t *testing.T, alpn string) {
 		t.Fatal(err)
 	}
 	defer echo.Close()
+	// Recent Xray defaults block private destinations. Permit only this test's
+	// loopback echo endpoint; production outbound defaults remain untouched.
+	settings := json.RawMessage(fmt.Sprintf(`{"finalRules":[{"action":"allow","ip":["127.0.0.1/32"],"port":%d}]}`, echo.Addr().(*net.TCPAddr).Port))
+	outbound := coreConf.OutboundDetourConfig{Tag: tag, Protocol: "freedom", Settings: &settings}
+	builtOutbound, err := outbound.Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := server.ohm.RemoveHandler(context.Background(), tag); err != nil {
+		t.Fatal(err)
+	}
+	if err := server.addOutbound(builtOutbound); err != nil {
+		t.Fatal(err)
+	}
 	go func() {
 		for {
 			c, err := echo.Accept()

@@ -99,7 +99,7 @@ packet-up 用 POST 上传、GET 响应下载；stream-up 使用流式 POST 上�
 
 ## 已知上游限制
 
-全链路 race 检查发现锁定的官方 Xray 在 TLS 证书热重载和 XHTTP 客户端内部有并发读写告警。正常模式的连接测试通过，但不能据此声称依赖已通过全链路 race 检查。CI 对 V2bX 配置适配执行 race 检查，对真实 H3 连接单独执行功能测试；上游并发问题仍需后续修复或升级验证。
+v26.11.9 的全链路 race 检查仍能复现官方 Xray TLS 证书热重载的并发读写告警。正常模式的连接测试通过，但不能据此声称依赖已通过全链路 race 检查。V2bX 撤销连接时发现的并发问题已在本项目修复。CI 对配置和 dispatcher 执行 race 检查，对真实 H3 连接单独执行功能测试；升级兼容工作流另行记录全链路 race 探测结果，上游问题仍需后续验证。
 
 ## 构建与验证
 
@@ -111,4 +111,4 @@ GOWORK=off GOEXPERIMENT=jsonv2 go test ./conf -run TestXrayALPN
 
 测试在本地创建证书和实际 H2/H3 入站，通过 Xray 客户端验证三种模式的数据往返、两个独立 UDP 入口的会话配对、用户流量统计和删除用户后的拒绝连接。
 
-Xray 依赖由旧 wyx2685 分支改为锁定的官方 v1.260327.0，以兼容当前公共依赖。原分支特有的 `DisableIVCheck: true` 不再受支持并会报错；旧 KCP header 伪装也不由这个版本提供。自定义 Xray 入站/出站必须符合该版本格式，例如自签证书客户端使用证书固定（pinnedPeerCertSha256），不要照搬旧脚本的 allowInsecure。sing 节点的配置格式不受此项迁移影响。
+Xray 依赖锁定官方 v26.11.9 发布提交（Go 模块 `v1.260327.1-0.20261109052709-676eaf66f8f0`），构建使用 Go 1.27.3。后续升级与兼容边界见 [内核升级说明](xray-upgrades.md)。原分支特有的 `DisableIVCheck: true` 不再受支持并会报错；旧 KCP header 伪装也不由这个版本提供。自定义 Xray 入站/出站必须符合该版本格式，例如自签证书客户端使用证书固定（pinnedPeerCertSha256），不要照搬旧脚本的 allowInsecure。sing 节点的配置格式不受此项迁移影响。
