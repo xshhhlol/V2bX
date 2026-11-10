@@ -20,6 +20,9 @@ import (
 
 // BuildInbound build Inbound config for different protocol
 func buildInbound(option *conf.Options, nodeInfo *panel.NodeInfo, tag string) (*core.InboundHandlerConfig, error) {
+	if option.XrayOptions == nil {
+		return nil, errors.New("Xray node options are required")
+	}
 	in := &coreConf.InboundDetourConfig{}
 	var err error
 	var network string
@@ -42,6 +45,24 @@ func buildInbound(option *conf.Options, nodeInfo *panel.NodeInfo, tag string) (*
 	}
 	if err != nil {
 		return nil, err
+	}
+	// H3 is a UDP-only XHTTP listener, not an ALPN fallback for TCP nodes.
+	for _, alpn := range option.XrayOptions.ALPN {
+		if alpn != "h3" {
+			continue
+		}
+		if len(option.XrayOptions.ALPN) != 1 {
+			return nil, errors.New("H3 requires ALPN to contain only h3")
+		}
+		if network != "xhttp" && network != "splithttp" {
+			return nil, errors.New("H3 requires the xhttp transport")
+		}
+		if nodeInfo.Security != panel.Tls || option.CertConfig == nil || option.CertConfig.CertMode == "" || option.CertConfig.CertMode == "none" {
+			return nil, errors.New("XHTTP H3 requires TLS and a configured certificate")
+		}
+		if option.XrayOptions.EnableProxyProtocol {
+			return nil, errors.New("XHTTP H3 does not support TCP PROXY protocol")
+		}
 	}
 	// Set network protocol
 	// Set server port
@@ -110,6 +131,13 @@ func buildInbound(option *conf.Options, nodeInfo *panel.NodeInfo, tag string) (*
 					},
 				},
 				RejectUnknownSNI: option.CertConfig.RejectUnknownSni,
+				ALPN: func() *coreConf.StringList {
+					if len(option.XrayOptions.ALPN) == 0 {
+						return nil
+					}
+					protocols := coreConf.StringList(append([]string(nil), option.XrayOptions.ALPN...))
+					return &protocols
+				}(),
 			}
 		}
 	case panel.Reality:
@@ -209,35 +237,39 @@ func buildV2ray(config *conf.Options, nodeInfo *panel.NodeInfo, inbound *coreCon
 		}
 		inbound.Settings = (*json.RawMessage)(&s)
 	}
-	if len(v.NetworkSettings) == 0 {
-		return nil
+	settings := v.NetworkSettings
+	if len(settings) == 0 {
+		settings = json.RawMessage(`{}`)
 	}
 
 	t := coreConf.TransportProtocol(v.Network)
 	inbound.StreamSetting = &coreConf.StreamConfig{Network: &t}
 	switch v.Network {
 	case "tcp":
-		err := json.Unmarshal(v.NetworkSettings, &inbound.StreamSetting.TCPSettings)
+		err := json.Unmarshal(settings, &inbound.StreamSetting.TCPSettings)
 		if err != nil {
 			return fmt.Errorf("unmarshal tcp settings error: %s", err)
 		}
 	case "ws":
-		err := json.Unmarshal(v.NetworkSettings, &inbound.StreamSetting.WSSettings)
+		err := json.Unmarshal(settings, &inbound.StreamSetting.WSSettings)
 		if err != nil {
 			return fmt.Errorf("unmarshal ws settings error: %s", err)
 		}
 	case "grpc":
-		err := json.Unmarshal(v.NetworkSettings, &inbound.StreamSetting.GRPCSettings)
+		err := json.Unmarshal(settings, &inbound.StreamSetting.GRPCSettings)
 		if err != nil {
 			return fmt.Errorf("unmarshal grpc settings error: %s", err)
 		}
 	case "httpupgrade":
-		err := json.Unmarshal(v.NetworkSettings, &inbound.StreamSetting.HTTPUPGRADESettings)
+		err := json.Unmarshal(settings, &inbound.StreamSetting.HTTPUPGRADESettings)
 		if err != nil {
 			return fmt.Errorf("unmarshal httpupgrade settings error: %s", err)
 		}
 	case "splithttp", "xhttp":
-		err := json.Unmarshal(v.NetworkSettings, &inbound.StreamSetting.SplitHTTPSettings)
+		if v.Flow != "" {
+			return errors.New("XHTTP requires an empty VLESS flow; Vision is for raw TCP")
+		}
+		err := json.Unmarshal(settings, &inbound.StreamSetting.SplitHTTPSettings)
 		if err != nil {
 			return fmt.Errorf("unmarshal xhttp settings error: %s", err)
 		}
@@ -319,9 +351,8 @@ func buildShadowsocks(config *conf.Options, nodeInfo *panel.NodeInfo, inbound *c
 	}
 	settings.Users = append(settings.Users, defaultSSuser)
 	settings.NetworkList = &coreConf.NetworkList{"tcp", "udp"}
-	settings.IVCheck = true
 	if config.XrayOptions.DisableIVCheck {
-		settings.IVCheck = false
+		return errors.New("DisableIVCheck is not supported by the upstream Xray core")
 	}
 	t := coreConf.TransportProtocol("tcp")
 	inbound.StreamSetting = &coreConf.StreamConfig{Network: &t}

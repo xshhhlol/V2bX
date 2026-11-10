@@ -48,7 +48,11 @@ jobs:
           GOEXPERIMENT: jsonv2
         run: |
           python3 -m unittest discover -s common/externalweb -p '*_test.py'
-          go test -race -tags "sing with_quic with_grpc with_utls with_wireguard with_acme with_gvisor" ./core/sing ./common/externalweb ./common/port80 ./common/webpage -timeout 120s
+          go test -race -tags "sing xray with_quic with_grpc with_utls with_wireguard with_acme with_gvisor" ./core/sing ./common/externalweb ./common/port80 ./common/webpage -timeout 120s
+          go test -race -tags xray ./core/xray ./conf -run '^TestX(HTTPValidation|rayALPN.*)$' -timeout 60s
+          # Pinned upstream Xray has races in TLS hot reload and its XHTTP client.
+          # Exercise actual H3 sessions separately; keep the regression test intact.
+          go test -tags xray ./core/xray -run '^TestXHTTP.*RoundTrip$' -timeout 90s
 
   build:
     needs: validate
@@ -154,13 +158,13 @@ jobs:
         run: |
           echo "version: $version"
           mkdir -p build_assets
-          GOEXPERIMENT=jsonv2 go build -v -o build_assets/V2bX -tags "sing hysteria2 with_quic with_grpc with_utls with_wireguard with_acme with_gvisor" -trimpath -ldflags "-X 'github.com/InazumaV/V2bX/cmd.version=$version' -s -w -buildid="
+          GOEXPERIMENT=jsonv2 go build -v -o build_assets/V2bX -tags "sing xray hysteria2 with_quic with_grpc with_utls with_wireguard with_acme with_gvisor" -trimpath -ldflags "-X 'github.com/InazumaV/V2bX/cmd.version=$version' -s -w -buildid="
 
       - name: Build Mips softfloat V2bX
         if: matrix.goarch == 'mips' || matrix.goarch == 'mipsle'
         run: |
           echo "version: $version"
-          GOEXPERIMENT=jsonv2 GOMIPS=softfloat go build -v -o build_assets/V2bX_softfloat -tags "sing hysteria2 with_quic with_grpc with_utls with_wireguard with_acme with_gvisor" -trimpath -ldflags "-X 'github.com/InazumaV/V2bX/cmd.version=$version' -s -w -buildid="
+          GOEXPERIMENT=jsonv2 GOMIPS=softfloat go build -v -o build_assets/V2bX_softfloat -tags "sing xray hysteria2 with_quic with_grpc with_utls with_wireguard with_acme with_gvisor" -trimpath -ldflags "-X 'github.com/InazumaV/V2bX/cmd.version=$version' -s -w -buildid="
       - name: Rename Windows V2bX
         if: matrix.goos == 'windows'
         run: |
@@ -171,6 +175,7 @@ jobs:
           cp ${GITHUB_WORKSPACE}/README.md ./build_assets/README.md
           cp ${GITHUB_WORKSPACE}/LICENSE ./build_assets/LICENSE
           cp ${GITHUB_WORKSPACE}/example/*.json ./build_assets/
+          cp -r ${GITHUB_WORKSPACE}/docs ./build_assets/docs
           LIST=('geoip' 'geosite')
           for i in "${LIST[@]}"
           do

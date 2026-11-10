@@ -62,6 +62,12 @@ wget -N https://raw.githubusercontent.com/xshhhlol/V2bX-script/master/install.sh
 GOEXPERIMENT=jsonv2 go build -v -o build_assets/V2bX -tags "sing xray hysteria2 with_quic with_grpc with_utls with_wireguard with_acme with_gvisor" -trimpath -ldflags "-X 'github.com/InazumaV/V2bX/cmd.version=$version' -s -w -buildid="
 ```
 
+## XHTTP + HTTP/3
+
+Xray 节点支持 XHTTP + TLS/H3（UDP），发布构建包含 Xray。节点配置 `Core: xray`、`ALPN: ["h3"]`，面板选择 VLESS + XHTTP + TLS、清空 flow，并开放节点 UDP 端口。上下行可经不同入口汇合到同一入站。
+
+完整配置、面板字段、客户端分离参数及 Xray 依赖迁移说明见 [XHTTP 使用说明](docs/xhttp.md)，配置示例见 [example/xhttp.json](example/xhttp.json)。
+
 ## 配置文件及详细使用教程
 
 [详细使用教程](https://v2bx.v-50.me/)

@@ -1,0 +1,20 @@
+{
+  "Log": {"Level": "info", "Output": ""},
+  "Cores": [{"Type": "xray", "Log": {"Level": "warning"}}],
+  "Nodes": [{
+    "Core": "xray",
+    "ApiHost": "https://panel.example.com",
+    "ApiKey": "replace-with-panel-key",
+    "NodeID": 1,
+    "NodeType": "vless",
+    "Timeout": 30,
+    "ListenIP": "::",
+    "ALPN": ["h3"],
+    "CertConfig": {
+      "CertMode": "file",
+      "CertDomain": "proxy.example.com",
+      "CertFile": "/etc/V2bX/fullchain.cer",
+      "KeyFile": "/etc/V2bX/cert.key"
+    }
+  }]
+}

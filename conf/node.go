@@ -129,7 +129,20 @@ func (o *Options) UnmarshalJSON(data []byte) error {
 	switch o.Core {
 	case "xray":
 		o.XrayOptions = NewXrayOptions()
-		return json.Unmarshal(data, o.XrayOptions)
+		if err := json.Unmarshal(data, o.XrayOptions); err != nil {
+			return err
+		}
+		// Accept the explicit section as well as the legacy flat node options.
+		var nested struct {
+			XrayOptions json.RawMessage `json:"XrayOptions"`
+		}
+		if err := json.Unmarshal(data, &nested); err != nil {
+			return err
+		}
+		if len(nested.XrayOptions) != 0 && string(nested.XrayOptions) != "null" {
+			return json.Unmarshal(nested.XrayOptions, o.XrayOptions)
+		}
+		return nil
 	case "sing":
 		o.SingOptions = NewSingOptions()
 		return json.Unmarshal(data, o.SingOptions)
