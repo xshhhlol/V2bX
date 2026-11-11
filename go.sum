@@ -1261,10 +1261,14 @@ github.com/xshhhlol/sing-anytls v0.0.0-20261021111646-31121aa21c4e h1:tnJuzcgvOE
 github.com/xshhhlol/sing-anytls v0.0.0-20261021111646-31121aa21c4e/go.mod h1:VRKLnj0ObEsN228h+zuzf91p+6sjtYE8SBaLPVsBy5o=
 github.com/xshhhlol/sing-box_mod v0.0.0-20261110113314-d8d159a4d239 h1:hCrE+5m+j5EcplLtcdruPiLli1GheyqBKUnkTITCAxw=
 github.com/xshhhlol/sing-box_mod v0.0.0-20261110113314-d8d159a4d239/go.mod h1:0ZFCTVfJmnlImsG5oxVnWbiWDQuiYBaySd//sjf+aZM=
+github.com/xshhhlol/sing-box_mod v0.0.0-20261111072656-42e8ff184a1f h1:GfPB07v6T7S5rP7Whz8EbwjU4GYzSSCSaUCmA5Dk/Pk=
+github.com/xshhhlol/sing-box_mod v0.0.0-20261111072656-42e8ff184a1f/go.mod h1:Rkv6z/Rrg2SfPrXKorlHR6/d9SjCZ8F/OE0cTJxmh0A=
 github.com/xshhhlol/sing-shadowsocks v0.0.0-20261030083525-00161623d8fd h1:7ndx+DPRtCIl+LaHwv2aO7tGZJadGdWEMDghGIHCTq4=
 github.com/xshhhlol/sing-shadowsocks v0.0.0-20261030083525-00161623d8fd/go.mod h1:COqm/+YJQjPTB1r0F5e85wXMos49eIuFHTYyBPZJ8tM=
 github.com/xshhhlol/sing-vmess v0.0.0-20261030035536-9a2d3098d4f6 h1:OKRs1IO+hFsoe5NHNDTCfDNcR/Uw3Uca04I35CcgeOk=
 github.com/xshhhlol/sing-vmess v0.0.0-20261030035536-9a2d3098d4f6/go.mod h1:P11scgTxMxVVQ8dlM27yNm3Cro40mD0+gHbnqrNGDuY=
+github.com/xshhhlol/sing-vmess v0.0.0-20261111072605-860c876d0864 h1:TJGwZui8F99LYMEgQQpSRDhUyA3WM9keDap/+35azu8=
+github.com/xshhhlol/sing-vmess v0.0.0-20261111072605-860c876d0864/go.mod h1:dBh9luqHdu9jYY0zf0KVKmbyAEjsUj2iFINip8cFhkQ=
 github.com/xtls/reality v0.0.0-20261108101329-4bb46b2afd8b h1:fAn11r21QiUY2oAGwENWb5ummjhWwMcs2WzkbjDMh+k=
 github.com/xtls/reality v0.0.0-20261108101329-4bb46b2afd8b/go.mod h1:ptlSkJ8k/7IDauNH0SA96JPOo+nYGLTv2Y3UMpwvAsY=
 github.com/xtls/xray-core v1.260327.1-0.20261109052709-676eaf66f8f0 h1:p2uoadP+ulClbJ9dn+QioF2SfBqRly6VoKJosHqwcRo=

@@ -251,6 +251,40 @@ func TestVMessFallbackSiteAndHardening(t *testing.T) {
 			echo(t, &fragmentedFirstWriteConn{Conn: conn}, "auto")
 		})
 	}
+	t.Run("grpc incomplete authentication closes only its stream", func(t *testing.T) {
+		addr := addNode("vmess-grpc-timeout", panel.None, "grpc")
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		transport, err := v2ray.NewClientTransport(ctx, &N.DefaultDialer{}, M.ParseSocksaddr(addr), option.V2RayTransportOptions{
+			Type: "grpc", GRPCOptions: option.V2RayGRPCOptions{ServiceName: "compat"},
+		}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer transport.Close()
+		conn, err := transport.DialContext(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer conn.Close()
+		start := time.Now()
+		if _, err := conn.Write([]byte("short")); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := conn.Read(make([]byte, 1)); err == nil {
+			t.Fatal("incomplete handshake unexpectedly succeeded")
+		}
+		if elapsed := time.Since(start); elapsed > 3*time.Second {
+			t.Fatalf("server did not enforce its 1s handshake timeout: %v", elapsed)
+		}
+		// The HTTP/2 transport is still usable for another authenticated RPC.
+		valid, err := transport.DialContext(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer valid.Close()
+		echo(t, valid, "auto")
+	})
 }
 
 func TestFallbackSiteApplies(t *testing.T) {

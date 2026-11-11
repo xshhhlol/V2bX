@@ -48,6 +48,7 @@ jobs:
           GOEXPERIMENT: jsonv2
         run: |
           python3 -m unittest discover -s common/externalweb -p '*_test.py'
+          go test -race github.com/sagernet/sing-vmess -timeout 120s
           go test -race -tags "sing xray with_quic with_grpc with_utls with_wireguard with_acme with_gvisor" ./core/sing ./common/externalweb ./common/port80 ./common/webpage -timeout 120s
           go test -race -tags xray ./core/xray ./core/xray/app/dispatcher ./conf -run '^TestX(HTTPValidation|ray.*)$' -timeout 60s
           # Pinned upstream Xray has races in TLS hot reload and its XHTTP client.
@@ -158,7 +159,11 @@ jobs:
         run: |
           echo "version: $version"
           mkdir -p build_assets
-          GOEXPERIMENT=jsonv2 go build -v -o build_assets/V2bX -tags "sing xray hysteria2 with_quic with_grpc with_utls with_wireguard with_acme with_gvisor" -trimpath -ldflags "-X 'github.com/InazumaV/V2bX/cmd.version=$version' -s -w -buildid="
+          # Android's anet dependency updates the Go IPv6 zone cache through
+          # linkname. Its layout still matches Go 1.27; scope the opt-in here.
+          android_link_flags=""
+          if [ "$GOOS" = android ]; then android_link_flags="-checklinkname=0"; fi
+          GOEXPERIMENT=jsonv2 go build -v -o build_assets/V2bX -tags "sing xray hysteria2 with_quic with_grpc with_utls with_wireguard with_acme with_gvisor" -trimpath -ldflags "$android_link_flags -X 'github.com/InazumaV/V2bX/cmd.version=$version' -s -w -buildid="
 
       - name: Build Mips softfloat V2bX
         if: matrix.goarch == 'mips' || matrix.goarch == 'mipsle'

@@ -382,10 +382,10 @@ require (
 	zombiezen.com/go/capnproto2 v2.18.2+incompatible // indirect
 )
 
-replace github.com/sagernet/sing-box => github.com/xshhhlol/sing-box_mod v0.0.0-20261110113314-d8d159a4d239
+replace github.com/sagernet/sing-box => github.com/xshhhlol/sing-box_mod v0.0.0-20261111072656-42e8ff184a1f
 
 replace github.com/sagernet/sing-anytls => github.com/xshhhlol/sing-anytls v0.0.0-20261021111646-31121aa21c4e
 
-replace github.com/sagernet/sing-vmess => github.com/xshhhlol/sing-vmess v0.0.0-20261030035536-9a2d3098d4f6
+replace github.com/sagernet/sing-vmess => github.com/xshhhlol/sing-vmess v0.0.0-20261111072605-860c876d0864
 
 replace github.com/sagernet/sing-shadowsocks => github.com/xshhhlol/sing-shadowsocks v0.0.0-20261030083525-00161623d8fd
