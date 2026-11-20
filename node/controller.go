@@ -1,8 +1,10 @@
 package node
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/InazumaV/V2bX/api/panel"
 	"github.com/InazumaV/V2bX/common/task"
@@ -16,6 +18,12 @@ type Controller struct {
 	server                    vCore.Core
 	apiClient                 *panel.Client
 	tag                       string
+	reloading                 bool
+	nodeDown                  bool
+	visits                    limiter.VisitMonitor
+	visitEtag                 string
+	stopVisits                context.CancelFunc
+	visitDone                 chan struct{}
 	limiter                   *limiter.Limiter
 	traffic                   map[string]int64
 	userList                  []panel.UserInfo
@@ -72,6 +80,10 @@ func (c *Controller) Start() error {
 		return fmt.Errorf("update rule error: %s", err)
 	}
 	c.limiter = l
+	if c.auditNode() {
+		l.SetVisits(&c.visits)
+		c.refreshVisits(context.Background())
+	}
 	if node.Security == panel.Tls {
 		err = c.requestCert()
 		if err != nil {
@@ -92,13 +104,24 @@ func (c *Controller) Start() error {
 		return fmt.Errorf("add users error: %s", err)
 	}
 	log.WithField("tag", c.tag).Infof("Added %d new users", added)
+	c.apiClient.ConfirmNode(node)
 	c.info = node
+	if c.auditNode() {
+		c.startVisits(node.PullInterval)
+	}
 	c.startTasks(node)
 	return nil
 }
 
 // Close implement the Close() function of the service interface
 func (c *Controller) Close() error {
+	if c.stopVisits != nil {
+		c.stopVisits()
+		<-c.visitDone
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		c.flushVisits(ctx)
+		cancel()
+	}
 	limiter.DeleteLimiter(c.tag)
 	if c.nodeInfoMonitorPeriodic != nil {
 		c.nodeInfoMonitorPeriodic.Close()
@@ -115,6 +138,9 @@ func (c *Controller) Close() error {
 	if c.onlineIpReportPeriodic != nil {
 		c.onlineIpReportPeriodic.Close()
 	}
+	if c.nodeDown {
+		return nil
+	}
 	err := c.server.DelNode(c.tag)
 	if err != nil {
 		return fmt.Errorf("del node error: %s", err)
@@ -124,4 +150,12 @@ func (c *Controller) Close() error {
 
 func (c *Controller) buildNodeTag(node *panel.NodeInfo) string {
 	return fmt.Sprintf("[%s]-%s:%d", c.apiClient.APIHost, node.Type, node.Id)
+}
+
+func (c *Controller) auditNode() bool {
+	switch c.apiClient.NodeType {
+	case "anytls", "tuic", "hysteria2":
+		return true
+	}
+	return false
 }

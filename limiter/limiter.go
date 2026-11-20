@@ -2,9 +2,9 @@ package limiter
 
 import (
 	"errors"
-	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/InazumaV/V2bX/api/panel"
@@ -21,15 +21,16 @@ func Init() {
 }
 
 type Limiter struct {
-	DomainRules   []*regexp.Regexp
-	ProtocolRules []string
+	visits        atomic.Pointer[VisitMonitor]
+	rules         atomic.Pointer[auditRules]
 	SpeedLimit    int
 	UserOnlineIP  *sync.Map      // Key: TagUUID, value: {Key: Ip, value: Uid}
 	OldUserOnline *sync.Map      // Key: Ip, value: Uid
 	UUIDtoUID     map[string]int // Key: UUID, value: Uid
 	UserLimitInfo *sync.Map      // Key: TagUUID value: UserLimitInfo
 	SpeedLimiter  *sync.Map      // key: TagUUID, value: *ratelimit.Bucket
-	AliveList     map[int]int    // Key: Uid, value: alive_ip
+	aliveMu       sync.RWMutex
+	AliveList     map[int]int // Key: Uid, value: alive_ip
 }
 
 type UserLimitInfo struct {
@@ -93,7 +94,9 @@ func (l *Limiter) UpdateUser(tag string, added []panel.UserInfo, deleted []panel
 		l.UserOnlineIP.Delete(format.UserTag(tag, deleted[i].Uuid))
 		l.SpeedLimiter.Delete(format.UserTag(tag, deleted[i].Uuid))
 		delete(l.UUIDtoUID, deleted[i].Uuid)
+		l.aliveMu.Lock()
 		delete(l.AliveList, deleted[i].Id)
+		l.aliveMu.Unlock()
 	}
 	for i := range added {
 		userLimit := &UserLimitInfo{
@@ -154,7 +157,9 @@ func (l *Limiter) CheckLimit(taguuid string, ip string, isTcp bool, noSSUDP bool
 		// Store online user for device limit
 		newipMap := new(sync.Map)
 		newipMap.Store(ip, uid)
+		l.aliveMu.RLock()
 		aliveIp := l.AliveList[uid]
+		l.aliveMu.RUnlock()
 		// If any device is online
 		if v, loaded := l.UserOnlineIP.LoadOrStore(taguuid, newipMap); loaded {
 			oldipMap := v.(*sync.Map)
@@ -222,4 +227,10 @@ func (l *Limiter) GetOnlineDevice() (*[]panel.OnlineUser, error) {
 type UserIpList struct {
 	Uid    int      `json:"Uid"`
 	IpList []string `json:"Ips"`
+}
+
+func (l *Limiter) SetAlive(list map[int]int) {
+	l.aliveMu.Lock()
+	l.AliveList = list
+	l.aliveMu.Unlock()
 }

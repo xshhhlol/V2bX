@@ -77,47 +77,25 @@ func (c *Controller) nodeInfoMonitor() (err error) {
 		}).Error("Get alive list failed")
 		return nil
 	}
+	if newN != nil && !c.reloading && newN.SameConfiguration(c.info) {
+		if err := c.limiter.UpdateRule(&newN.Rules); err != nil {
+			log.WithField("tag", c.tag).WithError(err).Error("Invalid audit rules")
+		} else {
+			c.apiClient.ConfirmNode(newN)
+			c.info = newN
+		}
+		newN = nil // Keep the listener, existing sessions and counters.
+	}
 	if newN != nil {
-		c.info = newN
+		// Reject a bad panel rule before taking the running node down.
+		if err = limiter.ValidateRules(&newN.Rules); err != nil {
+			log.WithField("tag", c.tag).WithError(err).Error("Invalid audit rules; keeping current node")
+			return nil
+		}
 		// nodeInfo changed
 		if newU != nil {
 			c.userList = newU
 		}
-		c.traffic = make(map[string]int64)
-		// Remove old node
-		log.WithField("tag", c.tag).Info("Node changed, reload")
-		err = c.server.DelNode(c.tag)
-		if err != nil {
-			log.WithFields(log.Fields{
-				"tag": c.tag,
-				"err": err,
-			}).Panic("Delete node failed")
-			return nil
-		}
-
-		// Update limiter
-		if len(c.Options.Name) == 0 {
-			c.tag = c.buildNodeTag(newN)
-			// Remove Old limiter
-			limiter.DeleteLimiter(c.tag)
-			// Add new Limiter
-			l := limiter.AddLimiter(c.tag, &c.LimitConfig, c.userList, newA)
-			c.limiter = l
-		}
-		// update alive list
-		if newA != nil {
-			c.limiter.AliveList = newA
-		}
-		// Update rule
-		err = c.limiter.UpdateRule(&newN.Rules)
-		if err != nil {
-			log.WithFields(log.Fields{
-				"tag": c.tag,
-				"err": err,
-			}).Error("Update Rule failed")
-			return nil
-		}
-
 		// check cert
 		if newN.Security == panel.Tls {
 			err = c.requestCert()
@@ -129,15 +107,59 @@ func (c *Controller) nodeInfoMonitor() (err error) {
 				return nil
 			}
 		}
+		c.traffic = make(map[string]int64)
+		c.reloading = true
+		c.apiClient.ForgetNode()
+		// Remove old node
+		log.WithField("tag", c.tag).Info("Node changed, reload")
+		if !c.nodeDown {
+			err = c.server.DelNode(c.tag)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"tag": c.tag,
+					"err": err,
+				}).Error("Delete node failed")
+				return nil
+			}
+
+			c.nodeDown = true
+		}
+		// Update limiter
+		if len(c.Options.Name) == 0 {
+			c.tag = c.buildNodeTag(newN)
+			// Remove Old limiter
+			limiter.DeleteLimiter(c.tag)
+			// Add new Limiter
+			l := limiter.AddLimiter(c.tag, &c.LimitConfig, c.userList, newA)
+			c.limiter = l
+			if c.auditNode() {
+				l.SetVisits(&c.visits)
+			}
+		}
+		// update alive list
+		if newA != nil {
+			c.limiter.SetAlive(newA)
+		}
+		// Update rule
+		err = c.limiter.UpdateRule(&newN.Rules)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"tag": c.tag,
+				"err": err,
+			}).Error("Update Rule failed")
+			return nil
+		}
+
 		// add new node
 		err = c.server.AddNode(c.tag, newN, c.Options)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"tag": c.tag,
 				"err": err,
-			}).Panic("Add node failed")
+			}).Error("Add node failed")
 			return nil
 		}
+		c.nodeDown = false
 		_, err = c.server.AddUsers(&vCore.AddUsersParams{
 			Tag:      c.tag,
 			Users:    c.userList,
@@ -150,6 +172,9 @@ func (c *Controller) nodeInfoMonitor() (err error) {
 			}).Error("Add users failed")
 			return nil
 		}
+		c.reloading = false
+		c.info = newN
+		c.apiClient.ConfirmNode(newN)
 		// Check interval
 		if c.nodeInfoMonitorPeriodic.Interval != newN.PullInterval &&
 			newN.PullInterval != 0 {
@@ -159,7 +184,7 @@ func (c *Controller) nodeInfoMonitor() (err error) {
 		}
 		if c.userReportPeriodic.Interval != newN.PushInterval &&
 			newN.PushInterval != 0 {
-			c.userReportPeriodic.Interval = newN.PullInterval
+			c.userReportPeriodic.Interval = newN.PushInterval
 			c.userReportPeriodic.Close()
 			_ = c.userReportPeriodic.Start(false)
 		}
@@ -169,7 +194,7 @@ func (c *Controller) nodeInfoMonitor() (err error) {
 	}
 	// update alive list
 	if newA != nil {
-		c.limiter.AliveList = newA
+		c.limiter.SetAlive(newA)
 	}
 	// node no changed, check users
 	if len(newU) == 0 {

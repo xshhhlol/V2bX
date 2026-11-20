@@ -50,6 +50,7 @@ jobs:
           python3 -m unittest discover -s common/externalweb -p '*_test.py'
           go test -race github.com/sagernet/sing-vmess -timeout 120s
           go test -race -tags "sing xray with_quic with_grpc with_utls with_wireguard with_acme with_gvisor" ./core/sing ./common/externalweb ./common/port80 ./common/webpage -timeout 120s
+          go test -race -tags "sing xray hysteria2 with_quic with_grpc with_utls with_wireguard with_acme with_gvisor" ./api/panel ./limiter ./core/hy2 ./node -run 'Test(PanelAudit|Hy2.*Audit|Audit|DestinationCache|IndexedAudit|XrayRAudit)' -timeout 120s
           go test -race -tags xray ./core/xray ./core/xray/app/dispatcher ./conf -run '^TestX(HTTPValidation|ray.*)$' -timeout 60s
           # Pinned upstream Xray has races in TLS hot reload and its XHTTP client.
           # Exercise actual H3 sessions separately; keep the regression test intact.

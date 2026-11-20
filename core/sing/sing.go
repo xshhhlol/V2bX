@@ -9,6 +9,7 @@ import (
 
 	"github.com/sagernet/sing-box/include"
 	"github.com/sagernet/sing-box/log"
+	"github.com/sagernet/sing/service"
 
 	"github.com/InazumaV/V2bX/conf"
 	vCore "github.com/InazumaV/V2bX/core"
@@ -82,7 +83,12 @@ func New(c *conf.CoreConfig) (vCore.Core, error) {
 	if err != nil {
 		return nil, err
 	}
+	if guard, ok := b.Router().(interface{ SupportsAuditEgress() bool }); !ok || !guard.SupportsAuditEgress() {
+		b.Close()
+		return nil, fmt.Errorf("sing-box router lacks audit rejection support; rebuild with the updated sing-box_mod")
+	}
 	hs := &HookServer{
+		dns:     service.FromContext[adapter.DNSRouter](b.Router().GetCtx()),
 		counter: sync.Map{},
 	}
 	b.Router().AppendTracker(hs)

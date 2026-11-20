@@ -20,13 +20,15 @@ const (
 )
 
 type NodeInfo struct {
-	Id           int
-	Type         string
-	Security     int
-	PushInterval time.Duration
-	PullInterval time.Duration
-	RawDNS       RawDNS
-	Rules        Rules
+	etag, bodyHash string
+	configHash     [32]byte
+	Id             int
+	Type           string
+	Security       int
+	PushInterval   time.Duration
+	PullInterval   time.Duration
+	RawDNS         RawDNS
+	Rules          Rules
 
 	// origin
 	VAllss      *VAllssNode
@@ -145,6 +147,7 @@ type RawDNS struct {
 }
 
 type Rules struct {
+	RouteIDs map[string]int
 	Regexp   []string
 	Protocol []string
 }
@@ -157,28 +160,19 @@ func (c *Client) GetNodeInfo() (node *NodeInfo, err error) {
 		ForceContentType("application/json").
 		Get(path)
 
+	if err != nil || r == nil {
+		return nil, fmt.Errorf("fetch node config failed: %v", err)
+	}
 	if r.StatusCode() == 304 {
 		return nil, nil
+	}
+	if err = c.checkResponse(r, path, nil); err != nil {
+		return nil, err
 	}
 	hash := sha256.Sum256(r.Body())
 	newBodyHash := hex.EncodeToString(hash[:])
 	if c.responseBodyHash == newBodyHash {
 		return nil, nil
-	}
-	c.responseBodyHash = newBodyHash
-	c.nodeEtag = r.Header().Get("ETag")
-	if err = c.checkResponse(r, path, err); err != nil {
-		return nil, err
-	}
-
-	if r != nil {
-		defer func() {
-			if r.RawBody() != nil {
-				r.RawBody().Close()
-			}
-		}()
-	} else {
-		return nil, fmt.Errorf("received nil response")
 	}
 	node = &NodeInfo{
 		Id:   c.NodeId,
@@ -272,28 +266,51 @@ func (c *Client) GetNodeInfo() (node *NodeInfo, err error) {
 		} else if _, ok = cm.Routes[i].Match.([]string); ok {
 			matchs = cm.Routes[i].Match.([]string)
 		} else {
-			temp := cm.Routes[i].Match.([]interface{})
+			temp, ok := cm.Routes[i].Match.([]interface{})
+			if !ok {
+				return nil, fmt.Errorf("route %d: match must be a string or an array of strings", cm.Routes[i].Id)
+			}
 			matchs = make([]string, len(temp))
 			for i := range temp {
-				matchs[i] = temp[i].(string)
+				value, ok := temp[i].(string)
+				if !ok {
+					return nil, fmt.Errorf("route match entry %d must be a string", i)
+				}
+				matchs[i] = value
 			}
+		}
+		cleaned := matchs[:0]
+		for _, value := range matchs {
+			if value = strings.TrimSpace(value); value != "" {
+				cleaned = append(cleaned, value)
+			}
+		}
+		matchs = cleaned
+		if len(matchs) == 0 {
+			return nil, fmt.Errorf("route %d has no match values", cm.Routes[i].Id)
 		}
 		switch cm.Routes[i].Action {
 		case "block":
+			if node.Rules.RouteIDs == nil {
+				node.Rules.RouteIDs = make(map[string]int)
+			}
 			for _, v := range matchs {
+				if _, exists := node.Rules.RouteIDs[v]; !exists {
+					node.Rules.RouteIDs[v] = cm.Routes[i].Id
+				}
 				if strings.HasPrefix(v, "protocol:") {
 					// protocol
 					node.Rules.Protocol = append(node.Rules.Protocol, strings.TrimPrefix(v, "protocol:"))
 				} else {
 					// domain
-					node.Rules.Regexp = append(node.Rules.Regexp, strings.TrimPrefix(v, "regexp:"))
+					node.Rules.Regexp = append(node.Rules.Regexp, v)
 				}
 			}
 		case "dns":
 			var domains []string
 			domains = append(domains, matchs...)
 			if matchs[0] != "main" {
-				node.RawDNS.DNSMap[strconv.Itoa(i)] = map[string]interface{}{
+				node.RawDNS.DNSMap[strconv.Itoa(len(node.RawDNS.DNSMap))] = map[string]interface{}{
 					"address": cm.Routes[i].ActionValue,
 					"domains": domains,
 				}
@@ -304,6 +321,9 @@ func (c *Client) GetNodeInfo() (node *NodeInfo, err error) {
 		}
 	}
 
+	if cm.BaseConfig == nil || cm.BaseConfig.PushInterval == nil || cm.BaseConfig.PullInterval == nil {
+		return nil, fmt.Errorf("missing base config intervals")
+	}
 	// set interval
 	node.PushInterval = intervalToTime(cm.BaseConfig.PushInterval)
 	node.PullInterval = intervalToTime(cm.BaseConfig.PullInterval)
@@ -313,7 +333,27 @@ func (c *Client) GetNodeInfo() (node *NodeInfo, err error) {
 	cm.Routes = nil
 	cm.BaseConfig = nil
 
+	// Fingerprint the effective configuration before a core can modify it.
+	config := *node
+	config.Rules = Rules{}
+	encoded, err := json.Marshal(config)
+	if err != nil {
+		return nil, err
+	}
+	node.configHash = sha256.Sum256(encoded)
+	node.bodyHash, node.etag = newBodyHash, r.Header().Get("ETag")
 	return node, nil
+}
+
+// ForgetNode forces a fresh config after a full reload has disturbed the running node.
+func (c *Client) ForgetNode() { c.nodeEtag = ""; c.responseBodyHash = "" }
+
+func (c *Client) ConfirmNode(n *NodeInfo) {
+	c.responseBodyHash, c.nodeEtag = n.bodyHash, n.etag
+}
+
+func (n *NodeInfo) SameConfiguration(other *NodeInfo) bool {
+	return other != nil && n.bodyHash != "" && n.configHash == other.configHash
 }
 
 func intervalToTime(i interface{}) time.Duration {

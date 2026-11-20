@@ -170,6 +170,7 @@ func (n *Hysteria2node) getBandwidthConfig(info *panel.NodeInfo) *server.Bandwid
 }
 
 func (n *Hysteria2node) getRequestHook(c *serverConfig) (server.RequestHook, error) {
+	hook := &auditRequestHook{tag: n.Tag, timeout: c.Sniff.Timeout}
 	if c.Sniff.Enable {
 		s := &sniff.Sniffer{
 			Timeout:       c.Sniff.Timeout,
@@ -187,9 +188,9 @@ func (n *Hysteria2node) getRequestHook(c *serverConfig) (server.RequestHook, err
 				return nil, fmt.Errorf("sniff.udpPorts: invalid port union")
 			}
 		}
-		return s, nil
+		hook.next = s
 	}
-	return nil, nil
+	return hook, nil
 }
 
 func (n *Hysteria2node) getOutboundConfig(c *serverConfig) (server.Outbound, error) {
@@ -229,6 +230,27 @@ func (n *Hysteria2node) getOutboundConfig(c *serverConfig) (server.Outbound, err
 			obs[i] = outbounds.OutboundEntry{Name: entry.Name, Outbound: ob}
 		}
 	}
+	// Enforce address rules after ACL selection, immediately before the actual
+	// transport. UDP WriteTo receives fresh AddrEx values for later targets.
+	resolver, err := configuredResolver(c, resolveSink{}, true)
+	if err != nil {
+		return nil, err
+	}
+	// The native ACL creates its own "direct" outbound when absent. Supply the
+	// same default explicitly so ACL direct() also passes the address guard.
+	hasDirect := false
+	for _, entry := range obs {
+		if strings.EqualFold(entry.Name, "direct") {
+			hasDirect = true
+			break
+		}
+	}
+	if !hasDirect {
+		obs = append(obs, outbounds.OutboundEntry{Name: "direct", Outbound: outbounds.NewDirectOutboundSimple(outbounds.DirectOutboundModeAuto)})
+	}
+	for i := range obs {
+		obs[i].Outbound = &checkedEgress{PluggableOutbound: obs[i].Outbound, tag: n.Tag, resolver: resolver}
+	}
 	var uOb outbounds.PluggableOutbound // "unified" outbound
 
 	// ACL
@@ -263,6 +285,16 @@ func (n *Hysteria2node) getOutboundConfig(c *serverConfig) (server.Outbound, err
 		uOb = obs[0].Outbound
 	}
 
+	uOb, err = configuredResolver(c, uOb, hasACL)
+	if err != nil {
+		return nil, err
+	}
+	Outbound := &outbounds.PluggableOutboundAdapter{PluggableOutbound: uOb}
+
+	return &auditOutbound{Outbound: Outbound, tag: n.Tag}, nil
+}
+
+func configuredResolver(c *serverConfig, uOb outbounds.PluggableOutbound, hasACL bool) (outbounds.PluggableOutbound, error) {
 	switch strings.ToLower(c.Resolver.Type) {
 	case "", "system":
 		if hasACL {
@@ -294,9 +326,7 @@ func (n *Hysteria2node) getOutboundConfig(c *serverConfig) (server.Outbound, err
 	default:
 		return nil, fmt.Errorf("unsupported resolver type")
 	}
-	Outbound := &outbounds.PluggableOutboundAdapter{PluggableOutbound: uOb}
-
-	return Outbound, nil
+	return uOb, nil
 }
 
 func (n *Hysteria2node) getMasqHandler(tlsconfig *server.TLSConfig, conn net.PacketConn, c *serverConfig) (http.Handler, error) {
@@ -416,6 +446,7 @@ func (n *Hysteria2node) getHyConfig(info *panel.NodeInfo, config *conf.Options, 
 		QUICConfig:            *quic,
 		Conn:                  conn,
 		RequestHook:           sniff,
+		RequestScope:          scopeRequest,
 		Outbound:              Outbound,
 		BandwidthConfig:       *n.getBandwidthConfig(info),
 		IgnoreClientBandwidth: info.Hysteria2.Ignore_Client_Bandwidth,

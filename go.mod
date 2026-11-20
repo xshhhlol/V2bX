@@ -382,10 +382,16 @@ require (
 	zombiezen.com/go/capnproto2 v2.18.2+incompatible // indirect
 )
 
-replace github.com/sagernet/sing-box => github.com/xshhhlol/sing-box_mod v0.0.0-20261111072656-42e8ff184a1f
+replace github.com/sagernet/sing-box => github.com/xshhhlol/sing-box_mod v0.0.0-20261120104824-6238623661c8
 
 replace github.com/sagernet/sing-anytls => github.com/xshhhlol/sing-anytls v0.0.0-20261021111646-31121aa21c4e
 
 replace github.com/sagernet/sing-vmess => github.com/xshhhlol/sing-vmess v0.0.0-20261111072605-860c876d0864
 
 replace github.com/sagernet/sing-shadowsocks => github.com/xshhhlol/sing-shadowsocks v0.0.0-20261030083525-00161623d8fd
+
+// Hysteria v2.13.0 with per-request authenticated audit hooks.
+replace github.com/apernet/hysteria/core/v2 => ./third_party/hysteria-core
+
+// sing-quic 75c3ac4fa12b with synchronized TUIC user lookup and updates.
+replace github.com/sagernet/sing-quic => ./third_party/sing-quic
